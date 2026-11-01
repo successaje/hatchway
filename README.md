@@ -23,8 +23,8 @@ your tools normally put them. Your private key never leaves the wallet.
   prepare deployments while a human approves each transaction.
 
 > Status: **0.1.0, pre-release.** Verified end-to-end on Anvil with forge 1.6 and Hardhat 3.21
-> using a deterministic test wallet, and with real MetaMask for a forge deployment on BNB Smart
-> Chain Testnet. The full MetaMask/Rabby acceptance checklist is pending. Not yet published to
+> using a deterministic test wallet, and with real MetaMask for forge deployments (1 and 5
+> transactions) on BNB Smart Chain Testnet. The full MetaMask/Rabby acceptance checklist is pending. Not yet published to
 > npm. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Contents
@@ -267,7 +267,7 @@ fixed, see the threat model), but **not** a professional security audit.
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Foundry  | forge 1.6.0-nightly (local) and 1.8.7 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough                                                                 |
 | Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                |
-| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask: one forge deployment on BNB testnet, full checklist pending; Rabby: pending                           |
+| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask: forge deployments (1 and 5 tx) on BNB testnet, full checklist pending; Rabby: pending                 |
 | Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`). Real deployment: BNB Smart Chain Testnet                                            |
 | OS       | Full suite (unit, integration, E2E): macOS arm64 locally, Linux x64 and macOS arm64 in CI. Unit and security tests also on Linux arm64, macOS x64 and Windows x64 in CI (Node 22 and 24) |
 
