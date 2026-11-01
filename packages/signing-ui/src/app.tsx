@@ -44,7 +44,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>();
   const [switching, setSwitching] = useState(false);
-  const api = useRef<SessionApi>();
+  const api = useRef<SessionApi | undefined>(undefined);
   const initiated = useRef(new Set<string>());
   const now = useNow(offset);
 
