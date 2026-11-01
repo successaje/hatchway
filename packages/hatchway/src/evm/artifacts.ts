@@ -12,6 +12,7 @@ import {
   type Hex,
 } from "viem";
 import type { DecodedArg } from "../core/protocol.js";
+import { fixedBytesText } from "./format.js";
 
 export interface ArtifactEntry {
   name: string;
@@ -183,11 +184,14 @@ export function formatAbiValue(value: unknown): string {
 }
 
 function toDecodedArgs(inputs: readonly AbiParameter[], values: readonly unknown[]): DecodedArg[] {
-  return inputs.map((input, i) => ({
-    name: input.name || `arg${i}`,
-    type: input.type,
-    value: formatAbiValue(values[i]),
-  }));
+  return inputs.map((input, i) =>
+    decodedArg(input.name || `arg${i}`, input.type, formatAbiValue(values[i])),
+  );
+}
+
+export function decodedArg(name: string, type: string, value: string): DecodedArg {
+  const text = fixedBytesText(type, value);
+  return text === undefined ? { name, type, value } : { name, type, value, text };
 }
 
 export function decodeConstructorArgs(abi: Abi, argsData: Hex): DecodedArg[] | undefined {

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `bytes1`–`bytes32` arguments that hold text, such as `bytes32("token")`, show that text
+  next to the hex on the signing page and in the terminal. Decoded arguments in `--json`
+  events carry it as `text`.
+
 ## [0.1.0] - 2026-11-01
 
 First release candidate (not yet published to npm).

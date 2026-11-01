@@ -58,6 +58,22 @@ describe("ArtifactIndex", () => {
     });
   });
 
+  it("adds the text held in bytes32 arguments", () => {
+    const abi = parseAbi(["function register(bytes32 key, address value)"]);
+    const value = "0x58E5eB88156641DCC2c9ddB22F75A19ee0bbbfdd";
+    const key = `0x746f6b656e${"0".repeat(54)}` as const;
+    expect(decodeCall(abi, encodeFunctionData({ abi, args: [key, value] }))?.args).toEqual([
+      { name: "key", type: "bytes32", value: key, text: "token" },
+      { name: "value", type: "address", value },
+    ]);
+    const hash = `0x${"9f".repeat(32)}` as const;
+    expect(decodeCall(abi, encodeFunctionData({ abi, args: [hash, value] }))?.args[0]).toEqual({
+      name: "key",
+      type: "bytes32",
+      value: hash,
+    });
+  });
+
   it("formats decoded values readably", () => {
     expect(
       formatAbiValue([1n, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", true, { a: "x" }]),

@@ -7,7 +7,7 @@ import {
   type Hex,
 } from "viem";
 import type { DecodedArg, Notice, TransactionReview } from "../core/protocol.js";
-import { decodeCall, decodeConstructorArgs, type ArtifactIndex } from "./artifacts.js";
+import { decodeCall, decodeConstructorArgs, decodedArg, type ArtifactIndex } from "./artifacts.js";
 import {
   chainName,
   getChain,
@@ -140,7 +140,7 @@ export async function buildTransactionReview(
       const args = decodeConstructorArgs(match.entry.abi, match.argsData);
       if (args) review.constructorArgs = args;
     }
-    review.args = [{ name: "salt", type: "bytes32", value: salt }];
+    review.args = [decodedArg("salt", "bytes32", salt)];
     review.title = `Deploy ${review.contractName ?? "contract"} with CREATE2`;
   } else if (tx.data === "0x") {
     review.action = "transfer";

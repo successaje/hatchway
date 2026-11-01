@@ -245,3 +245,41 @@ test("cancelling in the browser stops the command", async ({ page }) => {
   expect(await run.exited).toBe(10);
   await expect(page.getByRole("heading", { name: "Session cancelled" })).toBeVisible();
 });
+
+test("shows the text held in bytes32 arguments during a multi-transaction forge script", async ({
+  page,
+}) => {
+  const run = runCli(
+    [
+      "forge",
+      "--json",
+      "--no-open",
+      "script/DeploySystem.s.sol",
+      "--rpc-url",
+      anvil.url,
+      "--broadcast",
+    ],
+    { cwd: FOUNDRY_EXAMPLE },
+  );
+  runs.push(run);
+  await openWithWallet(page, await run.sessionUrl);
+  await page.getByRole("button", { name: /Test Wallet/ }).click();
+
+  const confirm = page.getByRole("button", { name: "Confirm in Test Wallet" });
+  for (const title of ["Deploy HatchToken", "Deploy Registry", "Registry.initialize"]) {
+    await expect(page.getByRole("heading", { name: title })).toBeVisible({ timeout: 15_000 });
+    await confirm.click();
+  }
+  await expect(page.getByRole("heading", { name: "Registry.register" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText('As text: "token"')).toBeVisible();
+  await expect(page.getByText(`0x746f6b656e${"0".repeat(54)}`)).toBeVisible();
+  await confirm.click();
+  await expect(page.getByRole("heading", { name: "Registry.transferOwnership" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await confirm.click();
+  await expect(page.getByRole("heading", { name: "All done" })).toBeVisible({ timeout: 15_000 });
+  expect(await run.exited).toBe(0);
+});

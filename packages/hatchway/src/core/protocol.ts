@@ -105,6 +105,8 @@ export interface DecodedArg {
   name: string;
   type: string;
   value: string;
+  /** For `bytes1`–`bytes32` values that hold padded ASCII text, that text. */
+  text?: string;
 }
 
 export type SimulationStatus = "passed" | "failed" | "unavailable" | "skipped";

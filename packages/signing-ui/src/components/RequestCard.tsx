@@ -210,6 +210,11 @@ function Args({ args }: { args: DecodedArg[] }) {
           <span class="arg-name">{arg.name}</span>
           <span class="arg-type">{arg.type}</span>
           <code class="mono arg-value">{arg.value}</code>
+          {arg.text !== undefined ? (
+            <span class="arg-text">
+              As text: <code class="mono">{JSON.stringify(arg.text)}</code>
+            </span>
+          ) : null}
         </li>
       ))}
     </ul>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseOptions, SESSION_OPTIONS } from "../../src/cli/args.js";
 import { coerceArg, parseValue } from "../../src/cli/coerce.js";
 import { chainSummary, explorerTxUrl } from "../../src/evm/chains.js";
-import { formatAmount, parseDuration, shortHex } from "../../src/evm/format.js";
+import { fixedBytesText, formatAmount, parseDuration, shortHex } from "../../src/evm/format.js";
 import { HatchwayError } from "../../src/core/errors.js";
 import { isLoopbackUrl, redactUrl, scrubSecrets } from "../../src/util/redact.js";
 import { isLoopbackHost } from "../../src/server/security.js";
@@ -70,6 +70,25 @@ describe("formatting", () => {
     expect(parseDuration("2h")).toBe(7_200_000);
     expect(parseDuration("45")).toBe(45_000);
     expect(parseDuration("soon")).toBeUndefined();
+  });
+
+  it("reads text held in fixed-size bytes only when it is printable and zero-padded", () => {
+    const pad = (hex: string, size = 32) => `0x${hex.padEnd(size * 2, "0")}`;
+    expect(fixedBytesText("bytes32", pad("746f6b656e"))).toBe("token");
+    expect(fixedBytesText("bytes4", "0x41424344")).toBe("ABCD");
+    expect(fixedBytesText("bytes32", pad("4d494e5445525f524f4c45"))).toBe("MINTER_ROLE");
+    // Hashes, numbers, empty values, gaps, control characters and non-ASCII are not text.
+    expect(fixedBytesText("bytes32", `0x${"9f".repeat(32)}`)).toBeUndefined();
+    expect(fixedBytesText("bytes32", `0x${"0".repeat(63)}1`)).toBeUndefined();
+    expect(fixedBytesText("bytes32", pad(""))).toBeUndefined();
+    expect(fixedBytesText("bytes32", pad("2020"))).toBeUndefined();
+    expect(fixedBytesText("bytes32", pad("610062"))).toBeUndefined();
+    expect(fixedBytesText("bytes32", pad("611b5b3331"))).toBeUndefined();
+    expect(fixedBytesText("bytes32", pad("c3a9"))).toBeUndefined();
+    // Only bytes1..bytes32; dynamic bytes and other types are left alone.
+    expect(fixedBytesText("bytes", "0x41")).toBeUndefined();
+    expect(fixedBytesText("bytes33", "0x41")).toBeUndefined();
+    expect(fixedBytesText("string", "0x41")).toBeUndefined();
   });
 
   it("shortens hex", () => {

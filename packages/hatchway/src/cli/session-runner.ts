@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 import { Bridge, DEFAULTS } from "../bridge.js";
 import { HatchwayError } from "../core/errors.js";
-import type { SessionPurpose } from "../core/protocol.js";
+import type { DecodedArg, SessionPurpose } from "../core/protocol.js";
 import type { ApprovalRequest } from "../core/request.js";
 import { shortHex } from "../evm/format.js";
 import { canOpenBrowser, detectRemoteContext, openInBrowser } from "../util/environment.js";
@@ -173,6 +173,13 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
   });
 }
 
+/** Shows text held in fixed-size bytes the way Solidity writes it: bytes32("token"). */
+function formatArgs(args: DecodedArg[]): string {
+  return args
+    .map((a) => (a.text === undefined ? a.value : `${a.type}(${JSON.stringify(a.text)})`))
+    .join(", ");
+}
+
 function describeReview(request: ApprovalRequest, reporter: Reporter): void {
   const title = clean(request.review?.title ?? request.signatureReview?.title ?? "Request");
   reporter.active(
@@ -181,9 +188,9 @@ function describeReview(request: ApprovalRequest, reporter: Reporter): void {
   const review = request.review;
   if (review) {
     if (review.constructorArgs?.length)
-      reporter.note(`args: ${review.constructorArgs.map((a) => a.value).join(", ")}`);
+      reporter.note(`args: ${formatArgs(review.constructorArgs)}`);
     if (review.args?.length && review.action === "call")
-      reporter.note(`args: ${review.args.map((a) => a.value).join(", ")}`);
+      reporter.note(`args: ${formatArgs(review.args)}`);
     if (review.to && review.action !== "deploy_create2") reporter.note(`to: ${review.to}`);
     if (review.value !== "0") reporter.note(`value: ${review.valueDisplay}`);
     if (review.simulation.status === "failed")

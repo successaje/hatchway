@@ -699,6 +699,12 @@ button {
   color: var(--text-3);
 }
 
+.arg-text {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
 .arg-value {
   overflow-wrap: anywhere;
   flex-basis: 100%;

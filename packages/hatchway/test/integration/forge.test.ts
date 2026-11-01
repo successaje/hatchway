@@ -146,13 +146,22 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
 
   it("runs a multi-transaction script one approval at a time, in nonce order", async () => {
     const reviewed: string[] = [];
+    let registerKey: unknown;
     const run = await forge("script/DeploySystem.s.sol", {
       decide: (request) => {
         reviewed.push(request.review!.title);
+        if (request.review!.title === "Registry.register") registerKey = request.review!.args?.[0];
         return { action: "approve" };
       },
     });
     expect(run.code, run.stderr).toBe(0);
+    expect(registerKey).toEqual({
+      name: "key",
+      type: "bytes32",
+      value: `0x746f6b656e${"0".repeat(54)}`,
+      text: "token",
+    });
+    expect(run.stderr).toContain('args: bytes32("token"), 0x');
     expect(reviewed).toEqual([
       "Deploy HatchToken",
       "Deploy Registry",
