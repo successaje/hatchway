@@ -1,0 +1,32 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+*.log
+*.tgz
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.artifacts/
+
+# Foundry / Hardhat build output in examples and fixtures
+examples/**/out/
+examples/**/cache/
+examples/**/broadcast/
+examples/**/artifacts/
+examples/**/ignition/deployments/
+examples/**/types/
+packages/hatchway/test/fixtures/**/out/
+packages/hatchway/test/fixtures/**/cache/
+packages/hatchway/test/fixtures/**/broadcast/
+packages/hatchway/test/fixtures/**/artifacts/
+
+# Hatchway run records produced while testing
+.hatchway/
+
+# Local environment files
+.env
+.env.*
+!.env.example
