@@ -132,7 +132,7 @@ export async function deployCommand(
   printSummary(bridge, reporter);
   const record = await writeRunRecord({
     bridge,
-    command: `hatchway deploy ${argv.join(" ")}`,
+    command: ["hatchway", "deploy", ...argv],
     startedAt,
     status: error ? "failed" : "success",
     projectRoot: root,

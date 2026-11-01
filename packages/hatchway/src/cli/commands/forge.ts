@@ -89,11 +89,13 @@ export async function forgeCommand(
     reporter.step("Running forge script…");
     reporter.line();
 
-    const env = { ...process.env };
+    // The bridge URL carries a secret token: pass it in the environment (readable only by
+    // this user) rather than on the command line (visible to every user via ps).
+    const env: NodeJS.ProcessEnv = { ...process.env, ETH_RPC_URL: bridge.rpcUrl };
     // Newer forge versions honour this for unlocked sends; it must outlast a human approval.
     if (!invocation.hasRpcTimeout && !env.ETH_RPC_TIMEOUT)
       env.ETH_RPC_TIMEOUT = String(Math.ceil(sessionTimeoutMs(options) / 1000));
-    tool = runTool("forge", ["script", ...buildForgeArgs(invocation, bridge.rpcUrl, address)], {
+    tool = runTool("forge", ["script", ...buildForgeArgs(invocation, address)], {
       cwd: process.cwd(),
       env,
       onLine: (line) => reporter.tool("forge", line),
@@ -148,7 +150,7 @@ export async function forgeCommand(
   printSummary(bridge, reporter);
   const record = await writeRunRecord({
     bridge,
-    command: `hatchway forge ${rest.join(" ")}`,
+    command: ["hatchway", "forge", ...rest],
     startedAt,
     status: error ? "failed" : "success",
     projectRoot: root,

@@ -34,6 +34,22 @@ const BLOCKED: Record<string, string> = {
   eth_signTypedData_v3: "Use eth_signTypedData_v4.",
 };
 
+const MAX_BATCH = 100;
+
+/**
+ * Methods forwarded to the developer's RPC: an allow-list of read namespaces. Anything that
+ * sends or signs (eth_sendRawTransaction and its many variants, personal_ methods, anvil_ and hardhat_
+ * account tricks) is refused, so nothing reaches the chain without a wallet approval. Matching
+ * is case-sensitive on purpose: nodes accept "ETH_SENDRAWTRANSACTION", the allow-list does not.
+ */
+export function isForwardable(method: string): boolean {
+  if (/send|sign|submit/i.test(method)) return false;
+  return (
+    /^(eth|net|web3)_[A-Za-z0-9]+$/.test(method) ||
+    /^(debug_trace|trace_)[A-Za-z0-9_]*$/.test(method)
+  );
+}
+
 /**
  * The JSON-RPC endpoint that forge, Hardhat or any other tool talks to. Signing methods are
  * routed to the browser wallet; everything else is forwarded to the developer's RPC.
@@ -54,6 +70,11 @@ export class RpcHandler {
     }
     if (Array.isArray(parsed)) {
       if (parsed.length === 0) return JSON.stringify(errorResponse(null, -32600, "Empty batch"));
+      if (parsed.length > MAX_BATCH) {
+        return JSON.stringify(
+          errorResponse(null, -32600, `Batches are limited to ${MAX_BATCH} requests`),
+        );
+      }
       const responses = await Promise.all(parsed.map((item) => this.#handleOne(item, signal)));
       return JSON.stringify(responses);
     }
@@ -135,6 +156,12 @@ export class RpcHandler {
             `${request.method} is not available through Hatchway; manage your wallet in the browser.`,
           );
         }
+        if (!isForwardable(request.method)) {
+          throw new HatchwayError(
+            "UNSUPPORTED_SIGNER",
+            `${request.method} is not forwarded: Hatchway only relays read methods, and every transaction must be approved in your wallet.`,
+          );
+        }
         return this.#forward(request);
     }
   }
@@ -165,21 +192,17 @@ class Forwarded {
   }
 }
 
-async function awaitRequest(
-  engine: ApprovalEngine,
+/**
+ * Waits for a request's answer. A retry of a request that already finished gets the same
+ * answer (never a new prompt), and nobody receives a transaction hash before the broadcast
+ * has been verified: `completion` only resolves after the integrity checks.
+ */
+export async function awaitRequest(
+  engine: Pick<ApprovalEngine, "attachCaller">,
   approval: ReturnType<ApprovalEngine["enqueueTransaction"]>,
   signal: AbortSignal,
 ): Promise<string> {
-  // A retry of a request that already finished gets the same answer, never a new prompt.
-  if (
-    approval.result?.hash &&
-    (approval.state === "submitted" ||
-      approval.state === "confirmed" ||
-      approval.state === "reverted")
-  ) {
-    return approval.result.hash;
-  }
-  if (approval.isTerminal) throw approval.replayError();
+  if (approval.isTerminal) return approval.completion.promise;
   const release = engine.attachCaller(approval);
   signal.addEventListener("abort", release, { once: true });
   try {

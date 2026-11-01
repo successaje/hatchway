@@ -7,7 +7,7 @@ import { shortHex } from "../evm/format.js";
 import { canOpenBrowser, detectRemoteContext, openInBrowser } from "../util/environment.js";
 import { parseDuration } from "../evm/format.js";
 import type { ParsedOptions } from "./args.js";
-import type { Reporter } from "./output.js";
+import { clean, type Reporter } from "./output.js";
 
 export interface SessionRunOptions {
   reporter: Reporter;
@@ -51,7 +51,8 @@ export async function startSession(run: SessionRunOptions): Promise<Bridge> {
     upstream: run.upstream,
     projectRoot: run.projectRoot,
   });
-  reporter.addSecrets(bridge.secrets);
+  // Re-read on every line: a Hardhat script attaches its endpoint after the session starts.
+  reporter.addSecretSource(() => bridge.secrets);
 
   const chain = bridge.session.chain;
   if (chain && bridge.upstream) {
@@ -119,14 +120,14 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
         break;
       case "wallet_connected": {
         const w = event.wallet;
-        reporter.ok(`Wallet connected ${reporter.c.dim(`· ${w.name}`)}`);
+        reporter.ok(`Wallet connected ${reporter.c.dim(`· ${clean(w.name)}`)}`);
         reporter.field("Address", w.address);
         reporter.line();
         reporter.event({ event: "wallet", address: w.address, chainId: w.chainId, wallet: w.name });
         break;
       }
       case "wallet_issue":
-        reporter.warn(event.detail);
+        reporter.warn(clean(event.detail));
         reporter.event({ event: "wallet_issue", issue: event.issue, message: event.detail });
         break;
       case "wallet_issue_resolved":
@@ -136,7 +137,7 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
         describeReview(event.request, reporter);
         break;
       case "request_in_wallet":
-        reporter.note(`Waiting for approval in ${session.wallet?.name ?? "your wallet"}…`);
+        reporter.note(`Waiting for approval in ${clean(session.wallet?.name ?? "your wallet")}…`);
         break;
       case "request_submitted": {
         const hash = event.request.result?.hash ?? "";
@@ -152,6 +153,17 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
           "Reject it in the wallet unless you want it sent anyway; the tool will not see the result.",
         );
         break;
+      case "request_late_broadcast":
+        reporter.fail(
+          `Request ${event.request.index} was not approved here, but your wallet broadcast it anyway: ${event.request.lateBroadcastHash}`,
+        );
+        reporter.note("The calling tool was told it was rejected. Remaining requests are stopped.");
+        reporter.event({
+          event: "late_broadcast",
+          index: event.request.index,
+          hash: event.request.lateBroadcastHash,
+        });
+        break;
       case "request_finished":
         describeFinished(event.request, reporter);
         break;
@@ -162,7 +174,7 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
 }
 
 function describeReview(request: ApprovalRequest, reporter: Reporter): void {
-  const title = request.review?.title ?? request.signatureReview?.title ?? "Request";
+  const title = clean(request.review?.title ?? request.signatureReview?.title ?? "Request");
   reporter.active(
     `${reporter.c.bold(`${request.index}.`)} ${title} ${reporter.c.dim("— review it in your browser")}`,
   );
@@ -175,7 +187,7 @@ function describeReview(request: ApprovalRequest, reporter: Reporter): void {
     if (review.to && review.action !== "deploy_create2") reporter.note(`to: ${review.to}`);
     if (review.value !== "0") reporter.note(`value: ${review.valueDisplay}`);
     if (review.simulation.status === "failed")
-      reporter.warn(`Simulation failed: ${review.simulation.message ?? "unknown reason"}`);
+      reporter.warn(`Simulation failed: ${clean(review.simulation.message ?? "unknown reason")}`);
   }
   reporter.event({
     event: "request",
@@ -195,7 +207,7 @@ function describeFinished(request: ApprovalRequest, reporter: Reporter): void {
       reporter.ok(`Confirmed ${reporter.c.dim(parts.join(" · "))}`);
       if (result?.contractAddress) {
         reporter.note(
-          `${request.review?.contractName ?? "Contract"} deployed at ${result.contractAddress}`,
+          `${clean(request.review?.contractName ?? "Contract")} deployed at ${result.contractAddress}`,
         );
       }
       reporter.line();
@@ -209,10 +221,10 @@ function describeFinished(request: ApprovalRequest, reporter: Reporter): void {
       reporter.fail(`Transaction reverted on-chain ${reporter.c.dim(result?.hash ?? "")}`);
       break;
     case "rejected":
-      reporter.fail(request.error?.message ?? "Rejected in wallet.");
+      reporter.fail(clean(request.error?.message ?? "Rejected in wallet."));
       break;
     default:
-      reporter.fail(request.error?.message ?? `Request ${request.state}.`);
+      reporter.fail(clean(request.error?.message ?? `Request ${request.state}.`));
   }
   reporter.event({
     event: request.state === "confirmed" || request.state === "signed" ? "confirmed" : "failed",

@@ -29,7 +29,8 @@ export class UiAssets {
     this.index = readFileSync(join(directory, "index.html"));
     for (const file of walk(directory)) {
       const type = CONTENT_TYPES[extname(file)];
-      if (!type) continue;
+      // HTML is only served at /s/<session> with the page's CSP, never as a cached asset.
+      if (!type || extname(file) === ".html") continue;
       const key = relative(directory, file).split(sep).join("/");
       this.#files.set(key, { body: readFileSync(file), contentType: type });
     }

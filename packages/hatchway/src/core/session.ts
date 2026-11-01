@@ -40,9 +40,9 @@ export type SessionEvent =
   | { type: "request_submitted"; request: ApprovalRequest }
   | { type: "request_finished"; request: ApprovalRequest }
   | { type: "request_abandoned"; request: ApprovalRequest }
+  | { type: "request_late_broadcast"; request: ApprovalRequest }
   | { type: "ended"; state: SessionState; reason: string | undefined };
 
-const MAX_CLAIMS_BEFORE_WALLET = 10;
 const ENDED_STATES: readonly SessionState[] = ["completed", "cancelled", "expired", "failed"];
 
 /**
@@ -67,7 +67,6 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
   readonly requests: ApprovalRequest[] = [];
 
   #pairingCode: string | undefined = randomToken(32);
-  #claims = 0;
   #browserTokenHash: string | undefined;
   #streams = 0;
   #timers: NodeJS.Timeout[] = [];
@@ -118,17 +117,17 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
   // ---- Browser pairing -----------------------------------------------------------------
 
   /**
-   * Exchanges the one-time pairing code from the session URL for a browser token.
-   * The code can be claimed again (e.g. from a different browser) until a wallet is bound;
-   * each new claim revokes the previous browser.
+   * Exchanges the one-time pairing code from the session URL for a browser token. A later
+   * claim (with a freshly issued code) revokes the previous browser.
    */
   claim(code: string): string {
     if (this.ended) throw new HatchwayError("SESSION_CLOSED", "This session has ended.");
     if (!this.#pairingCode || !constantTimeEqual(code, this.#pairingCode)) {
       throw new HatchwayError("USAGE", "This link is invalid or has already been used.");
     }
-    this.#claims += 1;
-    if (this.wallet || this.#claims >= MAX_CLAIMS_BEFORE_WALLET) this.#pairingCode = undefined;
+    // Single use: whoever opens the link first owns the session; a copy of the link (from
+    // scrollback, a screen share or process arguments) is worthless afterwards.
+    this.#pairingCode = undefined;
     const token = randomToken(32);
     this.#browserTokenHash = sha256Hex(token);
     if (this.state === "waiting_for_browser") this.state = "waiting_for_wallet";
@@ -139,6 +138,17 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
   authenticate(token: string | undefined): boolean {
     if (!token || !this.#browserTokenHash) return false;
     return constantTimeEqual(sha256Hex(token), this.#browserTokenHash);
+  }
+
+  /**
+   * Lets the paired tab hand the session to another browser (e.g. the default browser has no
+   * wallet). Only possible before a wallet is bound.
+   */
+  issueHandoffCode(): string {
+    if (this.ended) throw this.endError();
+    if (this.wallet)
+      throw new HatchwayError("USAGE", "A wallet is already connected to this session.");
+    return this.rotatePairingCode();
   }
 
   /** Issues a fresh pairing code so a new browser tab can take over the session. */
@@ -299,7 +309,8 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
       | "request_in_wallet"
       | "request_submitted"
       | "request_finished"
-      | "request_abandoned",
+      | "request_abandoned"
+      | "request_late_broadcast",
     request: ApprovalRequest,
   ): void {
     this.#emit({ type, request });

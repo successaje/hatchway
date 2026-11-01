@@ -15,6 +15,15 @@ const WALLET_METHODS = new Set([
   "eth_signTransaction",
 ]);
 
+/**
+ * Wallet methods, plus anything that looks like it sends or signs (raw-transaction variants,
+ * personal_sendTransaction, …). The session approves the former and refuses the rest, so a
+ * transaction signed with a local key cannot bypass the wallet while the plugin is active.
+ */
+function routedToWallet(method: string): boolean {
+  return WALLET_METHODS.has(method) || /send|sign/i.test(method);
+}
+
 /** Set by the `hatchway hardhat` command; the plugin does nothing without it. */
 export const BRIDGE_ENV = "HATCHWAY_BRIDGE_URL";
 
@@ -90,7 +99,7 @@ async function attach(bridge: string, connection: NetworkConnection<string>): Pr
 export default async (): Promise<Partial<NetworkHooks>> => ({
   async onRequest(context, networkConnection, jsonRpcRequest, next) {
     const bridge = process.env[BRIDGE_ENV];
-    if (!bridge || !WALLET_METHODS.has(jsonRpcRequest.method)) {
+    if (!bridge || !routedToWallet(jsonRpcRequest.method)) {
       return next(context, networkConnection, jsonRpcRequest);
     }
     if (networkConnection.networkConfig.type !== "http") {

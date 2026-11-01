@@ -211,6 +211,9 @@ export interface BroadcastTransaction {
   value: bigint;
   nonce: number;
   chainId?: number | undefined;
+  /** viem transaction type, e.g. "legacy", "eip1559", "eip7702". */
+  type?: string | undefined;
+  hasAuthorizationList?: boolean | undefined;
 }
 
 /**
@@ -222,6 +225,8 @@ export function findIntegrityMismatches(
   expected: CanonicalTransaction,
   expectedChainId: number,
   actual: BroadcastTransaction,
+  /** For requests without a pinned nonce: the lowest nonce the wallet may have used. */
+  minNonce?: number,
 ): string[] {
   const problems: string[] = [];
   if (actual.from.toLowerCase() !== expected.from.toLowerCase()) {
@@ -241,9 +246,17 @@ export function findIntegrityMismatches(
   }
   if (expected.nonce !== undefined && actual.nonce !== expected.nonce) {
     problems.push(`nonce is ${actual.nonce}, expected ${expected.nonce}`);
+  } else if (expected.nonce === undefined && minNonce !== undefined && actual.nonce < minNonce) {
+    // An older transaction with the same contents: the reported hash is not a new broadcast.
+    problems.push(`nonce is ${actual.nonce}, below the account's next nonce ${minNonce}`);
   }
-  if (actual.chainId !== undefined && actual.chainId !== expectedChainId) {
+  if (actual.chainId === undefined) {
+    problems.push("the transaction is not replay-protected (no chain id)");
+  } else if (actual.chainId !== expectedChainId) {
     problems.push(`chain id is ${actual.chainId}, expected ${expectedChainId}`);
+  }
+  if (actual.type === "eip7702" || actual.hasAuthorizationList) {
+    problems.push("the transaction carries an EIP-7702 authorization list");
   }
   return problems;
 }

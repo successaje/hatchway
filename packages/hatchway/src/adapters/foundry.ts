@@ -125,33 +125,24 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
 
 /**
  * Rewrites forge's arguments so it sends through the bridge:
- *  - `--rpc-url` points at the local bridge (the original endpoint stays upstream),
+ *  - any `--rpc-url`/`--fork-url` is removed; the bridge URL is passed in `ETH_RPC_URL`
+ *    instead, because process arguments are visible to other users and it carries a token,
  *  - `--unlocked --sender <wallet>` makes forge use eth_sendTransaction,
  *  - `--slow` sends one transaction at a time, matching one wallet approval at a time and
  *    giving each approval its own RPC timeout window.
  */
-export function buildForgeArgs(
-  invocation: ForgeInvocation,
-  bridgeRpcUrl: string,
-  sender: string,
-): string[] {
+export function buildForgeArgs(invocation: ForgeInvocation, sender: string): string[] {
   const out: string[] = [];
   const args = invocation.args;
-  let replacedRpc = false;
   for (let i = 0; i < args.length; i++) {
     const token = args[i]!;
     const base = token.split("=")[0]!;
     if (RPC_FLAGS.has(base) || base === "--sender" || base === "--unlocked") {
-      if (RPC_FLAGS.has(base) && !replacedRpc) {
-        out.push("--rpc-url", bridgeRpcUrl);
-        replacedRpc = true;
-      }
       if (base !== "--unlocked" && !token.includes("=")) i += 1;
       continue;
     }
     out.push(token);
   }
-  if (!replacedRpc) out.push("--rpc-url", bridgeRpcUrl);
   out.push("--unlocked", "--sender", sender);
   if (!invocation.hasSlow) out.push("--slow");
   return out;

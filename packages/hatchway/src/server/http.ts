@@ -215,6 +215,9 @@ export class HatchwayServer {
       session.updateWallet(parseWalletUpdate(await readJson(req, API_BODY_LIMIT)));
       return sendStatus(res, 204);
     }
+    if (route === "handoff") {
+      return sendJson(res, 200, { code: session.issueHandoffCode() });
+    }
     if (route === "cancel") {
       session.end("cancelled", "Cancelled in the browser.");
       return sendStatus(res, 204);

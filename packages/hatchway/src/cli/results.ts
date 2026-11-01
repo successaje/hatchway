@@ -4,6 +4,7 @@ import type { Bridge } from "../bridge.js";
 import { HatchwayError, type ErrorCode } from "../core/errors.js";
 import type { ApprovalRequest } from "../core/request.js";
 import { explorerAddressUrl } from "../evm/chains.js";
+import { sanitizeCommand } from "../util/redact.js";
 import { VERSION } from "./version.js";
 import type { Reporter } from "./output.js";
 
@@ -109,7 +110,8 @@ export function printSummary(bridge: Bridge, reporter: Reporter): void {
 
 export interface RunRecordInput {
   bridge: Bridge;
-  command: string;
+  /** The command line as arguments; credentials are removed before it is written. */
+  command: string[];
   startedAt: Date;
   status: "success" | "failed";
   projectRoot: string;
@@ -128,7 +130,7 @@ export async function writeRunRecord(input: RunRecordInput): Promise<string | un
   const record = {
     tool: "hatchway",
     version: VERSION,
-    command: input.command,
+    command: sanitizeCommand(input.command, bridge.secrets),
     status: input.status,
     startedAt: input.startedAt.toISOString(),
     finishedAt: new Date().toISOString(),

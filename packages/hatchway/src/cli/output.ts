@@ -10,6 +10,15 @@ export interface ReporterOptions {
   stderr?: NodeJS.WritableStream & { isTTY?: boolean };
 }
 
+/**
+ * Removes control characters (including ESC, so ANSI/OSC sequences) from untrusted text such as
+ * revert strings, wallet messages, tool output and contract names before it reaches a terminal.
+ */
+export function clean(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "");
+}
+
 export type JsonEvent = { event: string } & Record<string, unknown>;
 
 /**
@@ -23,6 +32,7 @@ export class Reporter {
   readonly #human: NodeJS.WritableStream;
   readonly #stdout: NodeJS.WritableStream;
   #secrets: string[] = [];
+  #secretSources: (() => readonly string[])[] = [];
 
   constructor(options: ReporterOptions) {
     this.json = options.json;
@@ -44,8 +54,17 @@ export class Reporter {
     this.#secrets.push(...secrets);
   }
 
+  /** Secrets that can change during a run (e.g. the endpoint a Hardhat script attaches). */
+  addSecretSource(source: () => readonly string[]): void {
+    this.#secretSources.push(source);
+  }
+
+  #allSecrets(): string[] {
+    return [...this.#secrets, ...this.#secretSources.flatMap((source) => source())];
+  }
+
   line(text = ""): void {
-    this.#human.write(`${scrubSecrets(text, this.#secrets)}\n`);
+    this.#human.write(`${scrubSecrets(text, this.#allSecrets())}\n`);
   }
 
   header(command: string): void {
@@ -84,7 +103,7 @@ export class Reporter {
 
   /** A line of output from a wrapped tool (forge, Hardhat), set off with a gutter. */
   tool(name: string, text: string): void {
-    this.line(`  ${this.c.dim(`${name} │`)} ${text}`);
+    this.line(`  ${this.c.dim(`${name} │`)} ${clean(text)}`);
   }
 
   /**
@@ -94,13 +113,13 @@ export class Reporter {
   event(event: JsonEvent, { revealSecrets = false }: { revealSecrets?: boolean } = {}): void {
     if (!this.json) return;
     const text = JSON.stringify(event);
-    this.#stdout.write(`${revealSecrets ? text : scrubSecrets(text, this.#secrets)}\n`);
+    this.#stdout.write(`${revealSecrets ? text : scrubSecrets(text, this.#allSecrets())}\n`);
   }
 
   error(error: HatchwayError): void {
     this.line();
-    this.line(`  ${this.c.red("✗")} ${this.c.bold(error.message)}`);
-    if (error.hint) this.line(`    ${error.hint}`);
+    this.line(`  ${this.c.red("✗")} ${this.c.bold(clean(error.message))}`);
+    if (error.hint) this.line(`    ${clean(error.hint)}`);
     if (this.debug) {
       if (error.details) this.line(this.c.dim(`    details: ${JSON.stringify(error.details)}`));
       const cause = (error as { cause?: unknown }).cause;

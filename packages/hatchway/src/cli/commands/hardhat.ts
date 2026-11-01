@@ -119,7 +119,7 @@ export async function hardhatCommand(
   printSummary(bridge, reporter);
   const record = await writeRunRecord({
     bridge,
-    command: `hatchway ${title}`,
+    command: ["hatchway", "hardhat", ...rest],
     startedAt,
     status: error ? "failed" : "success",
     projectRoot: project.root,

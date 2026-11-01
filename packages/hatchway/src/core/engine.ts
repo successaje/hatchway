@@ -1,4 +1,13 @@
-import { getAddress, hexToString, isHex, type Address, type Hex } from "viem";
+import {
+  getAddress,
+  hexToString,
+  isHex,
+  verifyMessage as verifyMessageLocally,
+  verifyTypedData as verifyTypedDataLocally,
+  type Address,
+  type Hex,
+  type Transaction,
+} from "viem";
 import { ArtifactIndex } from "../evm/artifacts.js";
 import { explorerTxUrl, isLocalChain, nativeSymbol } from "../evm/chains.js";
 import { formatAmount } from "../evm/format.js";
@@ -17,6 +26,7 @@ import type {
   Notice,
   ResultRequest,
   SignatureReview,
+  RequestState,
   TransactionReview,
 } from "./protocol.js";
 import type { ApprovalRequest, RequestOptions, SignatureMethod, WalletOutcome } from "./request.js";
@@ -309,6 +319,8 @@ export class ApprovalEngine {
     }
 
     // 5. Act on the answer.
+    // State changes asynchronously (the browser moves it to in_wallet), so read it fresh.
+    const wasInWallet = currentState(request) === "in_wallet";
     switch (outcome.kind) {
       case "rejected":
         request.fail(
@@ -335,6 +347,44 @@ export class ApprovalEngine {
         break;
     }
     session.emitRequest("request_finished", request);
+    if (wasInWallet && request.kind === "transaction" && currentState(request) !== "confirmed") {
+      // The wallet prompt may still be open (e.g. the request was withdrawn after a reload).
+      void this.#watchLateBroadcast(request, upstream);
+    }
+  }
+
+  /**
+   * After a transaction request ends without a broadcast while the wallet had it, keep
+   * watching the account for a while. If the wallet sends it anyway, stop further requests
+   * and tell the user, because the calling tool believes it was not sent.
+   */
+  async #watchLateBroadcast(request: ApprovalRequest, upstream: UpstreamRpc): Promise<void> {
+    if (request.expectedNonce === undefined || request.result?.hash) return;
+    const local = this.session.chain ? isLocalChain(this.session.chain.id) : false;
+    const until = Date.now() + 10 * 60_000;
+    let fromBlock: bigint | undefined;
+    while (Date.now() < until && !this.#stop.signal.aborted) {
+      try {
+        fromBlock ??= await upstream.client.getBlockNumber();
+        const hash = await findSentTransaction(upstream, request, request.expectedNonce, fromBlock);
+        if (hash) {
+          if (
+            this.session.requests.some((r) => r.result?.hash?.toLowerCase() === hash.toLowerCase())
+          )
+            return;
+          request.lateBroadcastHash = hash;
+          this.#halted = new HatchwayError(
+            "INTEGRITY_MISMATCH",
+            `Request ${request.index} was not approved here, but the wallet broadcast it anyway (${hash}).`,
+          );
+          this.session.emitRequest("request_late_broadcast", request);
+          return;
+        }
+      } catch {
+        // keep watching
+      }
+      await sleep(local ? 1_000 : 4_000, this.#stop.signal);
+    }
   }
 
   async #prepareTransaction(
@@ -458,6 +508,13 @@ export class ApprovalEngine {
           message: `The signature is scoped to chain ${String(domain.chainId)}, not the session's chain ${chainId}.`,
         });
       }
+      if (domain.chainId === undefined) {
+        notices.push({
+          level: "warning",
+          message:
+            "The signature is not bound to a chain (no domain chainId) and may be valid on other chains.",
+        });
+      }
       if (/permit/i.test(parsed.primaryType ?? "")) {
         notices.push({
           level: "warning",
@@ -527,37 +584,77 @@ export class ApprovalEngine {
     chainId: number,
   ): Promise<void> {
     const session = this.session;
+    // `submitted` is shown to the page, but callers only receive the hash through
+    // `completion`, which resolves after the checks below.
     request.state = "submitted";
     request.result = { hash, ...optionalUrl(explorerTxUrl(chainId, hash)) };
     session.changed();
 
-    const verification = await this.#verifyBroadcast(request, hash, upstream, chainId);
-    if (verification.problems.length > 0) {
+    const fail = (problem: string) => {
       const error = new HatchwayError(
         "INTEGRITY_MISMATCH",
-        `The wallet broadcast ${hash}, but it differs from the approved request: ${verification.problems.join("; ")}. Stopping.`,
+        `The wallet reported ${hash}, but ${problem}. Stopping.`,
         { hint: "Do not edit transaction data or nonce in the wallet while using Hatchway." },
       );
       this.#halted = error;
       request.fail("failed", error);
       session.emitRequest("request_finished", request);
+    };
+
+    const reused = session.requests.find(
+      (other) => other !== request && other.result?.hash?.toLowerCase() === hash.toLowerCase(),
+    );
+    if (reused) {
+      fail(`that hash already belongs to request ${reused.index}`);
+      return;
+    }
+
+    const verification = await this.#verifyBroadcast(request, hash, upstream, chainId);
+    if (verification.problems.length > 0) {
+      fail(`it differs from the approved request: ${verification.problems.join("; ")}`);
       return;
     }
     if (!verification.found) {
+      if (isLocalChain(chainId)) {
+        // A local node sees its own pending transactions immediately.
+        fail("the transaction does not exist on the local node");
+        return;
+      }
+      // Public chains: private mempools and slow propagation are real. Release the hash so the
+      // tool keeps going, but verify the contents as soon as the transaction appears.
+      request.needsContentCheck = true;
       request.review?.notices.push({
         level: "warning",
         message:
-          "The transaction is not visible on your RPC endpoint yet, so its contents could not be verified.",
+          "The transaction is not visible on your RPC endpoint yet. Hatchway will check its contents when it appears.",
       });
     }
     if (verification.nonce !== undefined) {
       request.broadcastNonce = verification.nonce;
-      this.#lastBroadcastNonce = verification.nonce;
+      this.#lastBroadcastNonce = Math.max(this.#lastBroadcastNonce ?? -1, verification.nonce);
     }
     this.#lastTransaction = request;
     request.completion.resolve(hash);
     session.emitRequest("request_submitted", request);
     void this.#track(request, hash, upstream, chainId);
+  }
+
+  #compare(request: ApprovalRequest, chainId: number, tx: Transaction): string[] {
+    return findIntegrityMismatches(
+      request.tx!,
+      chainId,
+      {
+        from: tx.from,
+        to: tx.to,
+        input: tx.input,
+        value: tx.value,
+        nonce: tx.nonce,
+        chainId: tx.chainId,
+        type: tx.type,
+        hasAuthorizationList: "authorizationList" in tx && Array.isArray(tx.authorizationList),
+      },
+      request.expectedNonce,
+    );
   }
 
   async #verifyBroadcast(
@@ -567,19 +664,11 @@ export class ApprovalEngine {
     chainId: number,
   ): Promise<{ found: boolean; problems: string[]; nonce?: number }> {
     const local = isLocalChain(chainId);
-    const deadline = Date.now() + (local ? 5_000 : 45_000);
+    const deadline = Date.now() + (local ? 5_000 : 90_000);
     while (Date.now() < deadline && !this.#stop.signal.aborted) {
       try {
         const tx = await upstream.client.getTransaction({ hash });
-        const problems = findIntegrityMismatches(request.tx!, chainId, {
-          from: tx.from,
-          to: tx.to,
-          input: tx.input,
-          value: tx.value,
-          nonce: tx.nonce,
-          chainId: tx.chainId,
-        });
-        return { found: true, problems, nonce: tx.nonce };
+        return { found: true, problems: this.#compare(request, chainId, tx), nonce: tx.nonce };
       } catch {
         await sleep(local ? 200 : 1_500, this.#stop.signal);
       }
@@ -601,6 +690,24 @@ export class ApprovalEngine {
       polls += 1;
       try {
         const receipt = await upstream.client.getTransactionReceipt({ hash });
+        if (request.needsContentCheck) {
+          const problems = this.#compare(
+            request,
+            chainId,
+            await upstream.client.getTransaction({ hash }),
+          );
+          request.needsContentCheck = false;
+          if (problems.length > 0) {
+            const error = new HatchwayError(
+              "INTEGRITY_MISMATCH",
+              `Transaction ${hash} was mined, but it differs from the approved request: ${problems.join("; ")}. Stopping.`,
+            );
+            this.#halted = error;
+            request.fail("failed", error);
+            session.emitRequest("request_finished", request);
+            return;
+          }
+        }
         const fee = receipt.gasUsed * receipt.effectiveGasPrice;
         request.result = {
           ...request.result,
@@ -632,14 +739,15 @@ export class ApprovalEngine {
         return;
       } catch {
         // Not mined yet (or a transient RPC error). Periodically check for replacement.
+        const nonce = request.broadcastNonce ?? request.expectedNonce;
         if (
           polls % 10 === 0 &&
-          request.broadcastNonce !== undefined &&
-          (await wasReplaced(upstream, request, hash))
+          nonce !== undefined &&
+          (await wasReplaced(upstream, request.tx!.from, nonce, hash))
         ) {
           const error = new HatchwayError(
             "TRANSACTION_REPLACED",
-            `Transaction ${hash} was replaced or dropped (another transaction used nonce ${request.broadcastNonce}).`,
+            `Transaction ${hash} was replaced or dropped (another transaction used nonce ${nonce}).`,
             {
               hint: "Avoid using the wallet's speed-up or cancel actions during a Hatchway session.",
             },
@@ -676,23 +784,27 @@ export class ApprovalEngine {
     let valid: boolean | undefined;
     try {
       if (details.method === "personal_sign") {
-        valid = await upstream.client.verifyMessage({
-          address: details.address,
-          message: { raw: details.payload as Hex },
-          signature,
-        });
+        // personal_sign payloads are usually hex bytes, but some callers send plain text.
+        const message = isHex(details.payload) ? { raw: details.payload } : details.payload;
+        valid = await upstream.client
+          .verifyMessage({ address: details.address, message, signature })
+          .catch(() => verifyMessageLocally({ address: details.address, message, signature }));
       } else {
         const typed = JSON.parse(details.payload) as Parameters<
           UpstreamRpc["client"]["verifyTypedData"]
         >[0];
-        valid = await upstream.client.verifyTypedData({
-          ...typed,
-          address: details.address,
-          signature,
-        });
+        valid = await upstream.client
+          .verifyTypedData({ ...typed, address: details.address, signature })
+          .catch(() => verifyTypedDataLocally({ ...typed, address: details.address, signature }));
       }
     } catch {
       valid = undefined;
+    }
+    if (valid === undefined) {
+      request.signatureReview?.notices.push({
+        level: "warning",
+        message: "The signature could not be verified (smart-contract wallet or unreachable RPC).",
+      });
     }
     if (valid === false) {
       request.fail(
@@ -709,6 +821,10 @@ export class ApprovalEngine {
     request.completion.resolve(signature);
     request.settled.resolve();
   }
+}
+
+function currentState(request: ApprovalRequest): RequestState {
+  return request.state;
 }
 
 function walletError(code: number | undefined, message: string): HatchwayError {
@@ -798,12 +914,12 @@ async function findSentTransaction(
 
 async function wasReplaced(
   upstream: UpstreamRpc,
-  request: ApprovalRequest,
+  from: Address,
+  nonce: number,
   hash: Hex,
 ): Promise<boolean> {
-  const nonce = request.broadcastNonce!;
   const latestNonce = await upstream.client.getTransactionCount({
-    address: request.tx!.from,
+    address: from,
     blockTag: "latest",
   });
   if (latestNonce <= nonce) return false;

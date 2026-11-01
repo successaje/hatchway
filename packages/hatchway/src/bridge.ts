@@ -46,6 +46,8 @@ export class Bridge {
   #upstream: UpstreamRpc | undefined;
   #artifacts: Promise<ArtifactIndex> | undefined;
   #closing: Promise<void> | undefined;
+  #attaching: Promise<{ chainId: number }> | undefined;
+  #attachedUrl: string | undefined;
 
   private constructor(options: BridgeOptions) {
     this.#projectRoot = options.projectRoot;
@@ -93,6 +95,7 @@ export class Bridge {
             );
       });
       bridge.session.setChain(chainId, options.upstream.url);
+      bridge.#attachedUrl = normalizeUrl(options.upstream.url);
     }
     await bridge.#server.listen();
     bridge.engine.start();
@@ -141,28 +144,45 @@ export class Bridge {
     return this.#artifacts;
   }
 
-  async #attach(params: AttachParams): Promise<{ chainId: number }> {
-    if (this.#upstream) {
-      if (this.#upstream.url !== params.url) {
-        throw new HatchwayError(
+  /**
+   * Binds the session to the network a Hardhat script connected to. Concurrent calls share
+   * one attempt, so two scripts racing with different URLs cannot both win.
+   */
+  #attach(params: AttachParams): Promise<{ chainId: number }> {
+    const normalized = normalizeUrl(params.url);
+    if (this.#attachedUrl !== undefined && this.#attachedUrl !== normalized) {
+      return Promise.reject(
+        new HatchwayError(
           "WRONG_NETWORK",
-          `This session is bound to ${this.#upstream.display}; the script connected to a different network${params.network ? ` (${params.network})` : ""}.`,
+          `This session is bound to ${this.#upstream?.display ?? "another network"}; the script connected to a different network${params.network ? ` (${params.network})` : ""}.`,
           { hint: "Use one network per Hatchway session." },
-        );
-      }
-      return { chainId: this.session.chain!.id };
-    }
-    const upstream = new UpstreamRpc(params.url, params.headers ? { headers: params.headers } : {});
-    const chainId = await upstream.chainId();
-    if (params.chainId !== undefined && params.chainId !== chainId) {
-      throw new HatchwayError(
-        "WRONG_NETWORK",
-        `The network reports chain ${chainId}, but Hardhat expected ${params.chainId}.`,
+        ),
       );
     }
-    this.#upstream = upstream;
-    this.session.setChain(chainId, params.url);
-    return { chainId };
+    if (this.#attaching) return this.#attaching;
+    if (this.#upstream) return Promise.resolve({ chainId: this.session.chain!.id });
+    this.#attachedUrl = normalized;
+    this.#attaching = (async () => {
+      const upstream = new UpstreamRpc(
+        params.url,
+        params.headers ? { headers: params.headers } : {},
+      );
+      const chainId = await upstream.chainId();
+      if (params.chainId !== undefined && params.chainId !== chainId) {
+        throw new HatchwayError(
+          "WRONG_NETWORK",
+          `The network reports chain ${chainId}, but Hardhat expected ${params.chainId}.`,
+        );
+      }
+      this.#upstream = upstream;
+      this.session.setChain(chainId, params.url);
+      return { chainId };
+    })();
+    this.#attaching.catch(() => {
+      this.#attachedUrl = undefined;
+      this.#attaching = undefined;
+    });
+    return this.#attaching;
   }
 
   /** Ends the session and stops the server. Safe to call more than once; later calls wait for the first. */
@@ -178,5 +198,13 @@ export class Bridge {
       await this.#server.close();
     })();
     return this.#closing;
+  }
+}
+
+function normalizeUrl(raw: string): string {
+  try {
+    return new URL(raw).href;
+  } catch {
+    return raw;
   }
 }

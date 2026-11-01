@@ -57,6 +57,10 @@ export class ApprovalRequest {
   broadcastNonce: number | undefined;
   /** When the page handed the request to the wallet. */
   inWalletSince: number | undefined;
+  /** The broadcast was not visible yet; compare its contents once it is mined. */
+  needsContentCheck = false;
+  /** A transaction sent by the wallet after this request was rejected or withdrawn. */
+  lateBroadcastHash: string | undefined;
   error: { code: ErrorCode; message: string } | undefined;
 
   /** Number of callers currently waiting on this request (forge retries add callers). */
