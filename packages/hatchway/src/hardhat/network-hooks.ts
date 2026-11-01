@@ -37,7 +37,15 @@ async function callBridge(url: string, method: string, params: unknown, id: Json
       error: { code: 4900, message: "The Hatchway session is not reachable. Was `hatchway hardhat` stopped?" },
     };
   }
-  return (await response.json()) as JsonRpcResponse;
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    body = undefined;
+  }
+  if (body && typeof body === "object" && "jsonrpc" in body) return body as JsonRpcResponse;
+  const message = body && typeof body === "object" && "message" in body ? String((body as { message: unknown }).message) : `HTTP ${response.status}`;
+  return { jsonrpc: "2.0", id, error: { code: 4900, message: `Hatchway session refused the request: ${message}` } };
 }
 
 function errorResponse(id: JsonRpcRequest["id"], message: string): JsonRpcResponse {

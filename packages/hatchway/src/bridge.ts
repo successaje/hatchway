@@ -23,6 +23,8 @@ export interface BridgeOptions {
   /** Project root used to find compiled artifacts for decoding. */
   projectRoot?: string | undefined;
   uiDirectory?: string;
+  /** Tuning knobs, mainly for tests. */
+  engine?: { abandonGraceMs?: number; previousConfirmationTimeoutMs?: number };
 }
 
 export const DEFAULTS = {
@@ -58,6 +60,7 @@ export class Bridge {
       session: this.session,
       upstream: () => this.#upstream,
       artifacts: () => this.artifacts(),
+      ...options.engine,
     });
     const rpc = new RpcHandler({
       engine: this.engine,

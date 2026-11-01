@@ -28,13 +28,13 @@ export function isSameOriginRequest(req: IncomingMessage): boolean {
   return site === undefined || site === "same-origin";
 }
 
-/** Requests to the RPC endpoint must not come from a browser at all. */
+/**
+ * Requests to the RPC endpoint must not come from a browser at all. Browsers attach `Origin`
+ * to every POST and `Sec-Fetch-Site` to every request, and pages cannot remove either.
+ * (`Sec-Fetch-Mode` is not used: Node's own fetch sends it.)
+ */
 export function looksLikeBrowserRequest(req: IncomingMessage): boolean {
-  return (
-    req.headers.origin !== undefined ||
-    req.headers["sec-fetch-mode"] !== undefined ||
-    req.headers["sec-fetch-site"] !== undefined
-  );
+  return req.headers.origin !== undefined || req.headers["sec-fetch-site"] !== undefined;
 }
 
 export const CONTENT_SECURITY_POLICY = [

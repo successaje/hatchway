@@ -14,7 +14,7 @@ import { ExitCode, HatchwayError } from "../../core/errors.js";
 import { parseOptions, SESSION_OPTIONS } from "../args.js";
 import { HELP } from "../help.js";
 import { Reporter } from "../output.js";
-import { firstFailure, printSummary, transactionRecords, writeRunRecord } from "../results.js";
+import { firstFailure, printSummary, settleSubmitted, transactionRecords, writeRunRecord } from "../results.js";
 import { onInterrupt, sessionTimeoutMs, startSession, waitForWallet } from "../session-runner.js";
 
 export async function forgeCommand(argv: string[], reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter): Promise<number> {
@@ -96,6 +96,7 @@ export async function forgeCommand(argv: string[], reporterFor: (json: boolean, 
     release();
   }
 
+  await settleSubmitted(bridge, bridge.session.chain?.local ? 10_000 : 60_000);
   const chainId = bridge.session.chain?.id;
   const broadcastFile = chainId !== undefined ? await findBroadcastFile(root, invocation.script, chainId, startedAt.getTime()) : undefined;
   const sentAny = bridge.session.requests.some((r) => r.result?.hash);

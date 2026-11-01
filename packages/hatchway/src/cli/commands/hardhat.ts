@@ -6,7 +6,7 @@ import { BRIDGE_ENV } from "../../hardhat/network-hooks.js";
 import { parseOptions, SESSION_OPTIONS } from "../args.js";
 import { HELP } from "../help.js";
 import type { Reporter } from "../output.js";
-import { firstFailure, printSummary, transactionRecords, writeRunRecord } from "../results.js";
+import { firstFailure, printSummary, settleSubmitted, transactionRecords, writeRunRecord } from "../results.js";
 import { onInterrupt, startSession } from "../session-runner.js";
 
 export async function hardhatCommand(argv: string[], reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter): Promise<number> {
@@ -73,6 +73,7 @@ export async function hardhatCommand(argv: string[], reporterFor: (json: boolean
     release();
   }
 
+  await settleSubmitted(bridge, bridge.session.chain?.local ? 10_000 : 60_000);
   const sentAny = bridge.session.requests.some((r) => r.result?.hash || r.state === "signed");
   if (!error) {
     reporter.ok(reporter.c.bold(sentAny ? "Deployment successful" : "Hardhat finished; nothing needed your wallet"));

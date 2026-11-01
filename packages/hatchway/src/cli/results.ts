@@ -49,6 +49,16 @@ function toRecord(request: ApprovalRequest): TransactionRecord {
   return record;
 }
 
+/**
+ * Waits (bounded) for every broadcast transaction to be confirmed or reverted, so the
+ * summary reflects receipts even when the wrapped tool finished waiting for them first.
+ */
+export async function settleSubmitted(bridge: Bridge, timeoutMs: number): Promise<void> {
+  const pending = bridge.session.requests.filter((r) => r.state === "submitted").map((r) => r.settled.promise);
+  if (pending.length === 0) return;
+  await Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, timeoutMs).unref())]);
+}
+
 /** The most significant failure among the session's requests, used for the exit code. */
 export function firstFailure(bridge: Bridge): HatchwayError | undefined {
   const priority: ErrorCode[] = ["INTEGRITY_MISMATCH", "TRANSACTION_REPLACED", "TRANSACTION_REVERTED", "USER_REJECTED", "NONCE_CONFLICT", "APPROVAL_TIMEOUT"];
