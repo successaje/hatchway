@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getAddress, parseAbi, type Address } from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -314,5 +315,49 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     expect(String((run.result.error as { message: string }).message)).toMatch(
       /nonce is \d+, expected \d+/,
     );
+  });
+
+  it("keeps the bridge token off forge's command line and wins over foundry.toml's eth_rpc_url", async () => {
+    const project = mkdtempSync(join(tmpdir(), "hatchway-forge-"));
+    cpSync(FOUNDRY_EXAMPLE, project, {
+      recursive: true,
+      filter: (src) => !/[/\\](broadcast|\.hatchway)$/.test(src),
+    });
+    // A config default pointing nowhere: forge must use the bridge from ETH_RPC_URL instead.
+    writeFileSync(
+      join(project, "foundry.toml"),
+      readFileSync(join(project, "foundry.toml"), "utf8").replace(
+        "[profile.default]",
+        '[profile.default]\neth_rpc_url = "http://127.0.0.1:1"',
+      ),
+    );
+    const run = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+      ],
+      { cwd: project },
+    );
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: deployer,
+    });
+    await wallet.waitFor((s) => s.requests.length > 0, 60_000);
+    const forgePid = execFileSync("pgrep", ["-P", String(run.child.pid)])
+      .toString()
+      .trim()
+      .split("\n")[0]!;
+    const argv = execFileSync("ps", ["-o", "args=", "-p", forgePid]).toString();
+    expect(argv).toContain("--unlocked");
+    expect(argv).not.toContain("/rpc/");
+    expect(await run.exited, run.stderr()).toBe(0);
+    wallet.close();
+    rmSync(project, { recursive: true, force: true });
   });
 });

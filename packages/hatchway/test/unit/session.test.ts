@@ -74,15 +74,20 @@ describe("Session", () => {
     );
   });
 
-  it("rejects invalid pairing codes and reuse after the wallet is bound", () => {
+  it("accepts each pairing code exactly once", () => {
     const { session } = make();
     const code = session.pairingCode!;
     expect(() => session.claim("wrong")).toThrow(HatchwayError);
-    session.claim(code);
-    session.updateWallet({ address: A, chainId: 1, name: "x" });
+    const first = session.claim(code);
     expect(() => session.claim(code)).toThrow(/already been used/);
-    const fresh = session.rotatePairingCode();
-    expect(session.claim(fresh)).toBeTruthy();
+    const handoff = session.issueHandoffCode();
+    const second = session.claim(handoff);
+    expect(session.authenticate(first)).toBe(false);
+    expect(session.authenticate(second)).toBe(true);
+    session.updateWallet({ address: A, chainId: 1, name: "x" });
+    expect(() => session.issueHandoffCode()).toThrow(/already connected/);
+    // The terminal can still issue a reconnect link after the tab is gone.
+    expect(session.claim(session.rotatePairingCode())).toBeTruthy();
   });
 
   it("expires when no wallet connects in time", () => {

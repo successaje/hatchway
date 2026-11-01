@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { buildForgeArgs, parseForgeArgs, resolveForgeRpc } from "../../src/adapters/foundry.js";
 import { selectedNetwork } from "../../src/adapters/hardhat.js";
 
-const BRIDGE = "http://127.0.0.1:5555/rpc/token";
 const SENDER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
 describe("parseForgeArgs", () => {
@@ -55,7 +54,7 @@ describe("parseForgeArgs", () => {
 });
 
 describe("buildForgeArgs", () => {
-  it("points forge at the bridge as an unlocked, slow sender", () => {
+  it("makes forge an unlocked, slow sender and keeps the bridge URL off the command line", () => {
     const parsed = parseForgeArgs([
       "script/D.s.sol",
       "--rpc-url",
@@ -63,10 +62,9 @@ describe("buildForgeArgs", () => {
       "--broadcast",
       "--verify",
     ]);
-    expect(buildForgeArgs(parsed, BRIDGE, SENDER)).toEqual([
+    const args = buildForgeArgs(parsed, SENDER);
+    expect(args).toEqual([
       "script/D.s.sol",
-      "--rpc-url",
-      BRIDGE,
       "--broadcast",
       "--verify",
       "--unlocked",
@@ -74,9 +72,11 @@ describe("buildForgeArgs", () => {
       SENDER,
       "--slow",
     ]);
+    // The bridge URL (with its token) travels in ETH_RPC_URL instead.
+    expect(args.join(" ")).not.toContain("rpc");
   });
 
-  it("replaces inline and short rpc flags and drops duplicate sender/unlocked flags", () => {
+  it("removes short, inline and duplicate rpc/sender/unlocked flags", () => {
     const parsed = parseForgeArgs([
       "script/D.s.sol",
       "-r",
@@ -85,31 +85,15 @@ describe("buildForgeArgs", () => {
       "--sender",
       SENDER,
       "--slow",
+      "--fork-url=http://b",
     ]);
-    expect(buildForgeArgs(parsed, BRIDGE, SENDER)).toEqual([
+    expect(buildForgeArgs(parsed, SENDER)).toEqual([
       "script/D.s.sol",
-      "--rpc-url",
-      BRIDGE,
       "--slow",
       "--unlocked",
       "--sender",
       SENDER,
     ]);
-    const inline = parseForgeArgs(["script/D.s.sol", "--rpc-url=http://a"]);
-    expect(buildForgeArgs(inline, BRIDGE, SENDER)).toEqual([
-      "script/D.s.sol",
-      "--rpc-url",
-      BRIDGE,
-      "--unlocked",
-      "--sender",
-      SENDER,
-      "--slow",
-    ]);
-  });
-
-  it("adds --rpc-url when the user relied on ETH_RPC_URL", () => {
-    const parsed = parseForgeArgs(["script/D.s.sol", "--broadcast"]);
-    expect(buildForgeArgs(parsed, BRIDGE, SENDER)).toContain(BRIDGE);
   });
 });
 

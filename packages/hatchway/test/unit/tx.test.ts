@@ -151,3 +151,25 @@ describe("findIntegrityMismatches", () => {
     );
   });
 });
+
+describe("integrity hardening", () => {
+  const expected = normalizeTransaction({ from: FROM, to: TO, data: "0x01" });
+  const actual = { from: FROM, to: TO, input: "0x01", value: 0n, nonce: 5, chainId: 1 };
+
+  it("rejects an older transaction with the same contents when the request had no nonce", () => {
+    expect(findIntegrityMismatches(expected, 1, { ...actual, nonce: 2 }, 5)[0]).toMatch(
+      /below the account's next nonce 5/,
+    );
+    expect(findIntegrityMismatches(expected, 1, { ...actual, nonce: 7 }, 5)).toEqual([]);
+  });
+
+  it("rejects broadcasts without replay protection or with EIP-7702 authorizations", () => {
+    expect(findIntegrityMismatches(expected, 1, { ...actual, chainId: undefined })[0]).toMatch(
+      /replay-protected/,
+    );
+    expect(findIntegrityMismatches(expected, 1, { ...actual, type: "eip7702" })[0]).toMatch(/7702/);
+    expect(
+      findIntegrityMismatches(expected, 1, { ...actual, hasAuthorizationList: true })[0],
+    ).toMatch(/7702/);
+  });
+});

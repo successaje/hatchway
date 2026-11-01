@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAddress, parseAbi, type Address } from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -135,5 +135,26 @@ describe("hatchway hardhat (Hardhat 3 plugin, real hardhat + anvil)", () => {
     const run = await hardhat(["run", "scripts/deploy.ts", "--network", "default"]);
     expect(run.code).not.toBe(0);
     expect(run.stderr).toContain("in-process network");
+  });
+
+  it("blocks transactions signed with a local key while the plugin is active", async () => {
+    const script = join(HARDHAT_EXAMPLE, "scripts", "zz-local-signer.ts");
+    writeFileSync(
+      script,
+      `import { network } from "hardhat";
+const { ethers } = await network.connect();
+const local = ethers.Wallet.createRandom().connect(ethers.provider);
+const { chainId } = await ethers.provider.getNetwork();
+await local.sendTransaction({ to: local.address, value: 0n, gasLimit: 21000n, gasPrice: 1n, nonce: 0, chainId });
+`,
+    );
+    try {
+      const run = await hardhat(["run", "scripts/zz-local-signer.ts", "--network", "localhost"]);
+      expect(run.code).not.toBe(0);
+      expect(run.stderr).toContain("only relays transactions approved in your wallet");
+      expect(transactions(run.result)).toHaveLength(0);
+    } finally {
+      rmSync(script, { force: true });
+    }
   });
 });

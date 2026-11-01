@@ -182,3 +182,95 @@ describe("urlSecrets", () => {
     ]);
   });
 });
+
+describe("hardening helpers", () => {
+  it("redacts JWT-style, short mixed and subdomain keys", async () => {
+    const { redactUrl, sanitizeCommand } = await import("../../src/util/redact.js");
+    expect(redactUrl("https://rpc.example/eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOjF9.c2lnbmF0dXJl")).toBe(
+      "https://rpc.example/***",
+    );
+    expect(redactUrl("https://rpc.example/v1/k3yk3yk3y123")).toBe("https://rpc.example/v1/***");
+    expect(redactUrl("https://a1b2c3d4e5f6g7h8.quiknode.pro/")).toBe("https://***.quiknode.pro/");
+    expect(redactUrl("https://base-sepolia.public.example/")).toBe(
+      "https://base-sepolia.public.example/",
+    );
+    expect(
+      sanitizeCommand(
+        [
+          "hatchway",
+          "forge",
+          "s.sol",
+          "--rpc-url",
+          "https://x.example/v2/abcDEF1234567890xyzKEY",
+          "--etherscan-api-key",
+          "SECRETKEY",
+          "--verifier-url=https://api.example/?apikey=K",
+        ],
+        [],
+      ),
+    ).toBe(
+      "hatchway forge s.sol --rpc-url https://x.example/v2/*** --etherscan-api-key *** --verifier-url=***",
+    );
+  });
+
+  it("strips terminal control sequences from untrusted text", async () => {
+    const { clean } = await import("../../src/cli/output.js");
+    expect(clean("revert \u001b]52;c;cm0gLXJm\u0007 \u001b[2Kdone\r")).toBe(
+      "revert ]52;c;cm0gLXJm [2Kdone",
+    );
+    expect(clean("tab\tok")).toBe("tab\tok");
+  });
+
+  it("only forwards read namespaces", async () => {
+    const { isForwardable } = await import("../../src/server/rpc-handler.js");
+    for (const ok of [
+      "eth_call",
+      "eth_getBlockByNumber",
+      "net_version",
+      "web3_clientVersion",
+      "debug_traceTransaction",
+      "trace_block",
+    ]) {
+      expect(isForwardable(ok), ok).toBe(true);
+    }
+    for (const no of [
+      "eth_sendRawTransactionSync",
+      "Eth_call",
+      "personal_sign",
+      "anvil_mine",
+      "admin_peers",
+      "eth_submitWork",
+    ]) {
+      expect(isForwardable(no), no).toBe(false);
+    }
+  });
+
+  it("gives retries the verified answer only", async () => {
+    const { awaitRequest } = await import("../../src/server/rpc-handler.js");
+    const { ApprovalRequest } = await import("../../src/core/request.js");
+    const request = new ApprovalRequest(1, {
+      kind: "transaction",
+      tx: normalizeTransactionForTest(),
+    });
+    request.state = "submitted";
+    request.result = { hash: "0xabc" };
+    let settled = false;
+    const engine = { attachCaller: () => () => undefined };
+    const pending = awaitRequest(engine, request, new AbortController().signal).then((hash) => {
+      settled = true;
+      return hash;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(settled).toBe(false); // hash exists, but verification has not finished
+    request.completion.resolve("0xabc");
+    await expect(pending).resolves.toBe("0xabc");
+  });
+});
+
+function normalizeTransactionForTest() {
+  return {
+    from: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const,
+    value: 0n,
+    data: "0x01" as const,
+  };
+}

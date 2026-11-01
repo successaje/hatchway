@@ -121,6 +121,28 @@ test("shows guidance when no wallet is installed", async ({ page }) => {
   await run.exited;
 });
 
+test("hands the session from a browser without a wallet to one with a wallet", async ({
+  page,
+  browser,
+}) => {
+  const run = deploy();
+  await page.goto(await run.sessionUrl);
+  await expect(page.getByText("No browser wallet found")).toBeVisible();
+  await page.getByRole("button", { name: "Get a link for another browser" }).click();
+  const link = await page.locator(".handoff-link code").innerText();
+  expect(link).toMatch(/\/s\/[A-Za-z0-9_-]+#[A-Za-z0-9_-]+$/);
+
+  const other = await browser.newContext();
+  const walletPage = await other.newPage();
+  await openWithWallet(walletPage, link);
+  await walletPage.getByRole("button", { name: /Test Wallet/ }).click();
+  await expect(walletPage.getByRole("heading", { name: "Deploy HatchToken" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Session opened elsewhere" })).toBeVisible();
+  await walletPage.getByRole("button", { name: "Confirm in Test Wallet" }).click();
+  expect(await run.exited).toBe(0);
+  await other.close();
+});
+
 test("explains a declined connection and lets the user retry", async ({ page }) => {
   const run = deploy();
   const wallet = await openWithWallet(page, await run.sessionUrl);

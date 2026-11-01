@@ -203,12 +203,26 @@ describe("loopback server security", () => {
     ).toBe(401);
   });
 
-  it("revokes an earlier browser when the link is claimed again, and burns the link once a wallet is bound", async () => {
+  it("makes the session link single-use, with an authenticated handoff to another browser", async () => {
     const bridge = await start();
     const { sid, code } = parts(bridge);
     const first = await claim(bridge);
-    const second = await claim(bridge);
-    expect(first).not.toBe(second);
+    // A copy of the link is worthless once it has been opened.
+    expect((await json(bridge, `/api/s/${sid}/claim`, { code })).status).toBe(400);
+    expect(parts(bridge).code).toBe("");
+
+    // Only the paired tab can mint a link for another browser; using it revokes the first tab.
+    expect((await json(bridge, `/api/s/${sid}/handoff`, {})).status).toBe(401);
+    const handoff = await json(
+      bridge,
+      `/api/s/${sid}/handoff`,
+      {},
+      { authorization: `Bearer ${first}` },
+    );
+    expect(handoff.status).toBe(200);
+    const next = (JSON.parse(handoff.body) as { code: string }).code;
+    const claimed = await json(bridge, `/api/s/${sid}/claim`, { code: next });
+    const second = (JSON.parse(claimed.body) as { token: string }).token;
     expect(bridge.session.authenticate(first)).toBe(false);
     expect(bridge.session.authenticate(second)).toBe(true);
 
@@ -219,9 +233,67 @@ describe("loopback server security", () => {
       { authorization: `Bearer ${second}` },
     );
     expect(bound.status).toBe(204);
-    expect(parts(bridge).code).toBe("");
-    const reuse = await json(bridge, `/api/s/${sid}/claim`, { code });
-    expect(reuse.status).toBe(400);
+    // No handoffs once a wallet is bound.
+    const late = await json(
+      bridge,
+      `/api/s/${sid}/handoff`,
+      {},
+      { authorization: `Bearer ${second}` },
+    );
+    expect(late.status).toBe(400);
+  });
+
+  it("does not serve the page HTML from the cacheable asset path", async () => {
+    const bridge = await start();
+    const { host } = parts(bridge);
+    expect((await raw(bridge.port, "/ui/index.html", { headers: { host } })).status).toBe(404);
+  });
+
+  it("relays only read methods; every send or sign variant is refused", async () => {
+    const bridge = await start();
+    const rpcPath = new URL(bridge.rpcUrl).pathname;
+    const { host } = parts(bridge);
+    const call = async (method: string) => {
+      const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: [] });
+      const res = await raw(bridge.port, rpcPath, {
+        method: "POST",
+        headers: {
+          host,
+          "content-type": "application/json",
+          "content-length": String(body.length),
+        },
+        body,
+      });
+      return JSON.parse(res.body) as { error?: { code: number } };
+    };
+    for (const method of [
+      "eth_sendRawTransaction",
+      "eth_sendRawTransactionSync",
+      "eth_sendRawTransactionConditional",
+      "eth_sendPrivateRawTransaction",
+      "eth_sendBundle",
+      "eth_sendUnsignedTransaction",
+      "ETH_SENDRAWTRANSACTION",
+      "personal_sendTransaction",
+      "personal_unlockAccount",
+      "anvil_impersonateAccount",
+      "hardhat_setBalance",
+      "evm_mine",
+      "eth_signTransaction",
+    ]) {
+      expect((await call(method)).error?.code, method).toBe(4200);
+    }
+    // Reads are allowed (they fail here only because this session has no upstream yet).
+    expect((await call("eth_blockNumber")).error?.code).not.toBe(4200);
+    const batch = JSON.stringify(
+      Array.from({ length: 101 }, (_, i) => ({ jsonrpc: "2.0", id: i, method: "eth_chainId" })),
+    );
+    const tooMany = await raw(bridge.port, rpcPath, {
+      method: "POST",
+      headers: { host, "content-type": "application/json", "content-length": String(batch.length) },
+      body: batch,
+    });
+    expect(JSON.parse(tooMany.body)).toMatchObject({ error: { code: -32600 } });
   });
 
   it("does not accept another session's token or session id", async () => {

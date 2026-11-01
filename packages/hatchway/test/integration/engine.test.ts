@@ -229,4 +229,96 @@ describe("approval engine (bridge API + anvil)", () => {
     const claim = await wallet.post("claim", { code: wallet.code }, false);
     expect(claim.status).toBe(410);
   });
+
+  it("rejects a reported hash that does not exist on the local node", async () => {
+    const { bridge, wallet } = await session({}, { decide: () => ({ action: "ignore" }) });
+    const pending = call(bridge, "eth_sendTransaction", [
+      { from: deployer, to: ANVIL_ACCOUNTS[1], value: "0x8" },
+    ]);
+    const request = (await wallet.waitFor((s) => s.requests[0]?.state === "review")).requests[0]!;
+    await wallet.post(`requests/${request.id}/begin`, {
+      payloadHash: request.payloadHash,
+      address: deployer,
+      chainId: 31337,
+    });
+    await wallet.post(`requests/${request.id}/result`, {
+      payloadHash: request.payloadHash,
+      outcome: "submitted",
+      hash: `0x${"ab".repeat(32)}`,
+    });
+    const response = await pending;
+    expect(response.error?.data?.hatchway).toBe("INTEGRITY_MISMATCH");
+    expect(response.error?.message).toMatch(/does not exist on the local node/);
+  });
+
+  it("rejects an older transaction's hash reported for a new request", async () => {
+    const { bridge, wallet } = await session({}, { decide: () => ({ action: "ignore" }) });
+    const tx = { from: deployer, to: ANVIL_ACCOUNTS[1], value: "0x9" };
+    const old = await rpc<string>(anvil.url, "eth_sendTransaction", [tx]);
+    const pending = call(bridge, "eth_sendTransaction", [tx]);
+    const request = (await wallet.waitFor((s) => s.requests[0]?.state === "review")).requests[0]!;
+    await wallet.post(`requests/${request.id}/begin`, {
+      payloadHash: request.payloadHash,
+      address: deployer,
+      chainId: 31337,
+    });
+    await wallet.post(`requests/${request.id}/result`, {
+      payloadHash: request.payloadHash,
+      outcome: "submitted",
+      hash: old,
+    });
+    const response = await pending;
+    expect(response.error?.data?.hatchway).toBe("INTEGRITY_MISMATCH");
+    expect(response.error?.message).toMatch(/below the account's next nonce/);
+  });
+
+  it("warns and stops when the wallet sends a request that was withdrawn", async () => {
+    const { bridge, wallet } = await session({}, { decide: () => ({ action: "ignore" }) });
+    const late: number[] = [];
+    bridge.session.on("event", (e) => {
+      if (e.type === "request_late_broadcast") late.push(e.request.index);
+    });
+    const pending = call(bridge, "eth_sendTransaction", [
+      { from: deployer, to: ANVIL_ACCOUNTS[1], value: "0xa" },
+    ]);
+    const request = (await wallet.waitFor((s) => s.requests[0]?.state === "review")).requests[0]!;
+    await wallet.post(`requests/${request.id}/begin`, {
+      payloadHash: request.payloadHash,
+      address: deployer,
+      chainId: 31337,
+    });
+    // After a reload the user withdraws the request, but the wallet popup was still open…
+    await wallet.post(`requests/${request.id}/result`, {
+      payloadHash: request.payloadHash,
+      outcome: "rejected",
+    });
+    expect((await pending).error?.data?.hatchway).toBe("USER_REJECTED");
+    // …and they approve it there anyway.
+    const params =
+      request.wallet.method === "eth_sendTransaction" ? request.wallet.params[0] : undefined;
+    const hash = await rpc<string>(anvil.url, "eth_sendTransaction", [params]);
+    await expect.poll(() => late, { timeout: 10_000 }).toEqual([1]);
+    expect(bridge.session.requests[0]!.lateBroadcastHash).toBe(hash);
+    const next = await call(bridge, "eth_sendTransaction", [
+      { from: deployer, to: ANVIL_ACCOUNTS[1], value: "0xb" },
+    ]);
+    expect(next.error?.data?.hatchway).toBe("PREVIOUS_FAILED");
+  });
+
+  it("binds a Hardhat session to one network even when two scripts attach at once", async () => {
+    const other = await startAnvil({ chainId: 1 });
+    const bridge = await Bridge.start({
+      purpose: { kind: "hardhat", title: "race" },
+      uiDirectory: UI,
+    });
+    open.push({ bridge });
+    const [a, b] = await Promise.all([
+      call(bridge, "hatchway_attach", [{ url: anvil.url }]),
+      call(bridge, "hatchway_attach", [{ url: other.url }]),
+    ]);
+    await other.stop();
+    expect(a.result).toEqual({ chainId: 31337 });
+    expect(b.error?.data?.hatchway).toBe("WRONG_NETWORK");
+    expect(bridge.session.chain?.id).toBe(31337);
+  });
 });
