@@ -39,17 +39,13 @@ const ACTION_LABEL: Record<TransactionReview["action"], string> = {
 
 export function RequestCard(props: Props) {
   const { request, snapshot } = props;
-  const position = `Request ${request.index}`;
+  const position = `${request.kind === "signature" ? "Signature" : "Transaction"} ${request.index}`;
   const title = request.review?.title ?? request.signatureReview?.title ?? "Request";
-  const chain = snapshot.chain;
 
   return (
     <section class="card enter" aria-labelledby={`request-${request.id}`} key={request.id}>
       <div class="card-top">
-        <p class="eyebrow">
-          {position}
-          {chain ? <> · {chain.name}</> : null}
-        </p>
+        <p class="eyebrow">{position}</p>
         <StateBadge request={request} />
       </div>
       <h1 id={`request-${request.id}`}>{title}</h1>

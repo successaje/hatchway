@@ -335,8 +335,8 @@ export function App() {
               <Pill tone="live">
                 <span class="live-dot" aria-hidden="true" /> Connected to terminal
               </Pill>
-              <span class="expires" title="Session expires">
-                {formatRemaining(snapshot.expiresAt - now)}
+              <span class="expires" title="Time left before this session expires">
+                Ends in {formatRemaining(snapshot.expiresAt - now)}
               </span>
             </>
           ) : phase.kind === "reconnecting" ? (
@@ -409,7 +409,9 @@ export function App() {
               </p>
             ) : null}
 
-            <Activity snapshot={snapshot} currentId={current?.id} />
+            {showActivity(snapshot, current) ? (
+              <Activity snapshot={snapshot} currentId={current?.id} />
+            ) : null}
           </>
         ) : null}
       </main>
@@ -427,6 +429,16 @@ export function App() {
       </footer>
     </div>
   );
+}
+
+/** The activity list only adds information when there is more than the request on screen. */
+function showActivity(snapshot: SessionSnapshot, current: RequestView | undefined): boolean {
+  const { requests } = snapshot;
+  if (requests.length === 0) return false;
+  if (requests.length > 1) return true;
+  const only = requests[0]!;
+  if (snapshot.state === "completed") return false;
+  return only.id !== current?.id || only.state === "queued";
 }
 
 function pickCurrent(snapshot: SessionSnapshot | undefined): RequestView | undefined {
@@ -504,7 +516,7 @@ function WalletBar({
       <div class="walletbar-net">
         {chain ? (
           <Pill tone={issue === "wrong_chain" ? "bad" : chain.testnet ? "neutral" : "warn"}>
-            {issue === "wrong_chain" ? `Wrong network (${wallet.chainId})` : chain.name}
+            {issue === "wrong_chain" ? "Wrong network" : chain.name}
           </Pill>
         ) : (
           <Pill tone="neutral">Waiting for network</Pill>
@@ -545,6 +557,24 @@ function Idle({ snapshot, preparing }: { snapshot: SessionSnapshot; preparing: b
     (r) => r.state === "confirmed" || r.state === "signed",
   ).length;
   const queued = snapshot.requests.find((r) => r.state === "queued");
+  if (snapshot.walletIssue) {
+    return (
+      <section class="card idle enter" role="status">
+        <span class="idle-mark" aria-hidden="true">
+          <span class="dot" />
+        </span>
+        <div>
+          <p class="eyebrow">Paused</p>
+          <h1>Check your wallet</h1>
+          <p class="lede">
+            {queued
+              ? "A request is waiting. It will appear here once your wallet matches the session above."
+              : "Requests appear here once your wallet matches the session above."}
+          </p>
+        </div>
+      </section>
+    );
+  }
   const text =
     queued?.waitingFor === "previous_confirmation"
       ? "Waiting for the previous transaction to confirm before showing the next one."
