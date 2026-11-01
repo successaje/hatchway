@@ -21,6 +21,8 @@ export interface HeadlessWalletOptions {
   decide?: (request: RequestView) => Decision;
   /** Mimic MetaMask, which ignores a dapp-supplied nonce and picks its own. */
   ignoreNonce?: boolean;
+  /** Add a fixed gas limit when the request has none, so reverting transactions still get mined. */
+  forceGas?: boolean;
   /** Do not connect a wallet automatically after pairing. */
   manualConnect?: boolean;
 }
@@ -155,6 +157,7 @@ export class HeadlessWallet {
     if (payload.method === "eth_sendTransaction") {
       const tx: Partial<WalletTransaction> = { ...payload.params[0] };
       if (this.#options.ignoreNonce) delete tx.nonce;
+      if (this.#options.forceGas && !tx.gas) tx.gas = "0x200000";
       if (decision.action === "tamper") tx.data = `${tx.data}00`;
       let hash: string;
       try {
