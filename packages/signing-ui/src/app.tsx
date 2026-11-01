@@ -345,7 +345,7 @@ export function App() {
         </div>
       </header>
 
-      <main class="main" aria-live="polite">
+      <main class="main">
         {phase.kind === "pairing" ? <Loading /> : null}
         {phase.kind === "error" ? (
           <Message tone="bad" title={phase.title} body={phase.message} />
