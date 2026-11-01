@@ -1,6 +1,7 @@
 import type { SessionSnapshot } from "../../../hatchway/src/core/protocol.ts";
 import { isMobileBrowser, type WalletOption } from "../wallets.ts";
-import { CheckIcon, Hex, Spinner, WalletIcon } from "./common.tsx";
+import { useState } from "preact/hooks";
+import { CheckIcon, CopyButton, Hex, Spinner, WalletIcon } from "./common.tsx";
 
 interface Props {
   snapshot: SessionSnapshot;
@@ -8,9 +9,17 @@ interface Props {
   connectingId: string | undefined;
   error: string | undefined;
   onConnect: (wallet: WalletOption) => void;
+  onHandoff: () => Promise<string>;
 }
 
-export function ConnectWallet({ snapshot, wallets, connectingId, error, onConnect }: Props) {
+export function ConnectWallet({
+  snapshot,
+  wallets,
+  connectingId,
+  error,
+  onConnect,
+  onHandoff,
+}: Props) {
   const purpose = snapshot.purpose;
   return (
     <section class="card enter" aria-labelledby="connect-title">
@@ -40,7 +49,7 @@ export function ConnectWallet({ snapshot, wallets, connectingId, error, onConnec
             <span class="skeleton skeleton-text" />
           </div>
         ) : wallets.length === 0 ? (
-          <NoWallet />
+          <NoWallet onHandoff={onHandoff} />
         ) : (
           wallets.map((wallet) => {
             const busy = connectingId === wallet.id;
@@ -100,8 +109,10 @@ export function ConnectWallet({ snapshot, wallets, connectingId, error, onConnec
   );
 }
 
-function NoWallet() {
+function NoWallet({ onHandoff }: { onHandoff: () => Promise<string> }) {
   const mobile = isMobileBrowser();
+  const [link, setLink] = useState<string>();
+  const [failed, setFailed] = useState<string>();
   return (
     <div class="empty">
       <p class="empty-title">No browser wallet found</p>
@@ -111,18 +122,43 @@ function NoWallet() {
           extension such as MetaMask or Rabby. Mobile wallets are not supported yet.
         </p>
       ) : (
-        <p>
-          Install{" "}
-          <a href="https://metamask.io/download/" target="_blank" rel="noreferrer noopener">
-            MetaMask
-          </a>{" "}
-          or{" "}
-          <a href="https://rabby.io/" target="_blank" rel="noreferrer noopener">
-            Rabby
-          </a>{" "}
-          in this browser and reload. If your wallet is in another browser, open the link from your
-          terminal there instead.
-        </p>
+        <>
+          <p>
+            Install{" "}
+            <a href="https://metamask.io/download/" target="_blank" rel="noreferrer noopener">
+              MetaMask
+            </a>{" "}
+            or{" "}
+            <a href="https://rabby.io/" target="_blank" rel="noreferrer noopener">
+              Rabby
+            </a>{" "}
+            in this browser and reload, or continue in the browser where your wallet is installed.
+          </p>
+          {link ? (
+            <div class="handoff">
+              <p>
+                Open this one-time link in that browser. This tab stops working once it is used.
+              </p>
+              <span class="handoff-link">
+                <code class="mono">{link}</code>
+                <CopyButton value={link} label="Copy link" />
+              </span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              class="btn btn-small"
+              onClick={() => {
+                onHandoff().then(setLink, (error: unknown) =>
+                  setFailed(error instanceof Error ? error.message : String(error)),
+                );
+              }}
+            >
+              Get a link for another browser
+            </button>
+          )}
+          {failed ? <p class="form-error">{failed}</p> : null}
+        </>
       )}
     </div>
   );

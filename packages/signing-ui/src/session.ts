@@ -126,6 +126,14 @@ export class SessionApi {
     return this.#send("cancel", {});
   }
 
+  /** A fresh one-time link for opening this session in another browser. */
+  async handoffUrl(): Promise<string> {
+    const response = await post(this.#path("handoff"), {}, this.link.token);
+    if (!response.ok) throw await failure(response);
+    const { code } = (await response.json()) as { code: string };
+    return `${location.origin}/s/${this.link.sessionId}#${code}`;
+  }
+
   /**
    * Streams session snapshots (server-sent events over fetch, so the token can travel in a
    * header). Resolves when the stream ends; rejects with ApiFailure on auth errors.

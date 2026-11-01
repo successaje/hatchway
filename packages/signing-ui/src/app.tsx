@@ -385,6 +385,7 @@ export function App() {
                 connectingId={connectingId}
                 error={connectError}
                 onConnect={(w) => void connect(w, true)}
+                onHandoff={() => api.current!.handoffUrl()}
               />
             ) : current && current.state !== "queued" ? (
               <RequestCard
