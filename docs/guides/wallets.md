@@ -5,11 +5,11 @@ Hatchway works with browser wallets that implement **EIP-1193** and announce the
 installed, the page lists each one and you choose. A wallet that only injects `window.ethereum`
 is offered as a fallback.
 
-| Wallet   | Status                                                                                                    |
-| -------- | --------------------------------------------------------------------------------------------------------- |
-| MetaMask | Designed for; manual acceptance test documented in [manual-acceptance.md](manual-acceptance.md), pending  |
-| Rabby    | Designed for; same manual test, pending                                                                   |
-| Others   | Should work if they support `eth_requestAccounts`, `eth_sendTransaction` and `wallet_switchEthereumChain` |
+| Wallet   | Status                                                                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MetaMask | Forge deployment on BNB Smart Chain Testnet verified, including a network switch; full [manual-acceptance.md](manual-acceptance.md) checklist pending |
+| Rabby    | Designed for; same manual test, pending                                                                                                               |
+| Others   | Should work if they support `eth_requestAccounts`, `eth_sendTransaction` and `wallet_switchEthereumChain`                                             |
 
 Automated tests use a deterministic EIP-6963 test wallet; they prove the page and protocol,
 not any particular extension.
@@ -34,6 +34,9 @@ seed phrase, private key or password.
   one request at a time after the previous one is mined, so MetaMask's choice matches what
   forge planned. If it does not (for example because you sent something else from the same
   account), Hatchway stops with an integrity error instead of continuing with wrong addresses.
+- **Fees.** MetaMask may use its own fee instead of the one forge estimated (on BNB Smart Chain
+  Testnet it sent 0.55 gwei where forge estimated 0.1 gwei). The summary reports the fee
+  actually paid, from the receipt.
 - **Editing in the wallet.** Changing gas or fees in the wallet is fine. Changing the data,
   value, recipient or nonce is detected after broadcast and stops the run.
 - **Speed up / cancel.** Using these on a transaction Hatchway is tracking replaces it;

@@ -5,8 +5,10 @@ _Last updated: 2026-11-01._
 ## Summary
 
 Hatchway 0.1.0 is functionally complete for local and testnet use with Foundry and Hardhat 3,
-verified end to end on Anvil with a deterministic test wallet, and across platforms in CI. It is
-**not yet published** to npm and **not yet tested with real MetaMask or Rabby installs**.
+verified end to end on Anvil with a deterministic test wallet, and across platforms in CI. A real
+MetaMask install deployed a contract through `hatchway forge` on BNB Smart Chain Testnet. It is
+**not yet published** to npm, the full MetaMask acceptance checklist has not been run, and
+**Rabby is untested**.
 
 ## Completed
 
@@ -40,12 +42,33 @@ verified end to end on Anvil with a deterministic test wallet, and across platfo
 | Lint, Prettier, TypeScript strict, build                                                               | Pass   | Local and CI                                                                      |
 | Production dependency audit                                                                            | Pass   | CI (one documented ignore: GHSA-mrhx-c7xc-m3w5)                                   |
 
+### Real wallet on a public testnet (2026-11-01)
+
+`hatchway forge script/DeployToken.s.sol --rpc-url https://bsc-testnet-rpc.publicnode.com
+--broadcast` from `examples/foundry`, forge 1.6.0-nightly, MetaMask, macOS arm64.
+
+- The wallet connected on Ethereum mainnet (chain 1); the page switched it to BNB Smart Chain
+  Testnet (97).
+- One deployment approved in MetaMask: tx
+  `0xb3a1349b315dacbd8dc0fae7966fa5862a65494793531d8d3bbed47144b4805a`, block 140198153,
+  HatchToken at `0x8694e706810958aD9c1C7218dCD6eC42e54B65Dc`. Hatchway's integrity check
+  accepted the broadcast and forge wrote its broadcast file.
+- Checked independently with `cast` against a second RPC (`data-seed-prebsc-1-s1`): status 1,
+  sender is the connected account, address equals CREATE(sender, nonce 135), 1468 bytes of
+  code, `name()` "Hatch Token", `symbol()` "HATCH", total supply and deployer balance 1e24.
+- MetaMask sent a type-2 transaction at 0.55 gwei, replacing forge's 0.1 gwei estimate; the
+  summary reported the fee actually paid (0.000261 tBNB, from the receipt).
+
+Not covered by this run: rejection, reload, account switching and multi-transaction scripts with
+a real extension, Hardhat on a public network, and Rabby.
+
 ## Remaining work
 
-1. **Manual acceptance with MetaMask and Rabby** (docs/guides/manual-acceptance.md). Needs a
-   human with the extensions installed; results go in the release notes.
-2. **Testnet run** (e.g. Base Sepolia or Sepolia) with a funded test wallet, to confirm
-   behaviour with real block times and public RPCs.
+1. **Manual acceptance with MetaMask and Rabby** (docs/guides/manual-acceptance.md). MetaMask
+   has done one testnet deployment; the full checklist is still needed for both wallets, and
+   results go in the release notes.
+2. **More testnet coverage**: a multi-transaction forge script and a Hardhat 3 run on a public
+   testnet (one forge deployment on BNB Smart Chain Testnet is done).
 3. **First npm release**: publish `hatchway` 0.1.0 (owner action), then configure npm trusted
    publishing for the release workflow.
 4. Windows end-to-end flows (integration tests use POSIX signals and `pgrep`; unit/security
@@ -65,5 +88,5 @@ verified end to end on Anvil with a deterministic test wallet, and across platfo
 
 ## Next concrete engineering action
 
-Run the manual acceptance checklist with MetaMask and Rabby against Anvil, fix anything it
-finds, then tag `v0.1.0`.
+Run the manual acceptance checklist with MetaMask and Rabby against Anvil, then
+`DeploySystem.s.sol` on BNB Smart Chain Testnet; fix anything they find, then tag `v0.1.0`.
