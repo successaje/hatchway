@@ -261,13 +261,13 @@ automated and self-reviewed design, **not** an independent professional audit.
 
 ## Compatibility
 
-| Area     | Verified                                                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------ |
-| Foundry  | forge 1.6.0-nightly (2026-04) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough         |
-| Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                    |
-| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask/Rabby: manual test pending |
-| Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`)          |
-| OS       | macOS (arm64) verified locally; Linux, Windows and macOS x64 via CI (see the latest CI run)                  |
+| Area     | Verified                                                                                                                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundry  | forge 1.6.0-nightly (2026-04) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough                                                                                     |
+| Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                |
+| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask/Rabby: manual test pending                                                                             |
+| Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`)                                                                                      |
+| OS       | Full suite (unit, integration, E2E): macOS arm64 locally, Linux x64 and macOS arm64 in CI. Unit and security tests also on Linux arm64, macOS x64 and Windows x64 in CI (Node 22 and 24) |
 
 Not supported: Hardhat 2 via `hatchway hardhat` (use `connect`), Hardhat's in-process network,
 `forge script --multi`, raw signed transactions (`eth_signTransaction`), EIP-7702 and blob
