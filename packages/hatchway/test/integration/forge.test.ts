@@ -67,6 +67,10 @@ async function forge(
   wallet.close();
   const result = run.result();
   if (!result) throw new Error(`no result event; stderr:\n${run.stderr()}`);
+  if ((result.transactions as unknown[]).length === 0 && !script.includes("Fails")) {
+    // Surface forge's own output: an empty run usually means forge never reached the bridge.
+    throw new Error(`forge sent no transactions (exit ${code}); output:\n${run.stderr()}`);
+  }
   return { code, result, wallet, events: run.events, stderr: run.stderr() };
 }
 

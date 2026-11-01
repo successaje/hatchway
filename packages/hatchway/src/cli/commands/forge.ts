@@ -91,7 +91,13 @@ export async function forgeCommand(
 
     // The bridge URL carries a secret token: pass it in the environment (readable only by
     // this user) rather than on the command line (visible to every user via ps).
-    const env: NodeJS.ProcessEnv = { ...process.env, ETH_RPC_URL: bridge.rpcUrl };
+    // ETH_RPC_URL is forge's documented fallback for --rpc-url; FOUNDRY_ETH_RPC_URL overrides
+    // the eth_rpc_url config value, for forge versions that resolve the endpoint from config.
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ETH_RPC_URL: bridge.rpcUrl,
+      FOUNDRY_ETH_RPC_URL: bridge.rpcUrl,
+    };
     // Newer forge versions honour this for unlocked sends; it must outlast a human approval.
     if (!invocation.hasRpcTimeout && !env.ETH_RPC_TIMEOUT)
       env.ETH_RPC_TIMEOUT = String(Math.ceil(sessionTimeoutMs(options) / 1000));
