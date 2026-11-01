@@ -6,15 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
-
-- `bytes1`–`bytes32` arguments that hold text, such as `bytes32("token")`, show that text
-  next to the hex on the signing page and in the terminal. Decoded arguments in `--json`
-  events carry it as `text`.
-
 ## [0.1.0] - 2026-11-01
 
-First release candidate (not yet published to npm).
+First release, published to npm by hand (no `v0.1.0` tag or GitHub release).
 
 ### Added
 
@@ -29,6 +23,8 @@ First release candidate (not yet published to npm).
 - Local signing page: EIP-6963 wallet discovery, decoded review (contract names, constructor
   and call arguments, CREATE/CREATE2 address prediction), simulation, fee estimates, warnings,
   network switching, account-change handling, reload recovery, light and dark themes.
+  `bytes1`–`bytes32` arguments that hold text, such as `bytes32("token")`, show that text next
+  to the hex (and as `text` in `--json` events).
 - Approval engine: nonce-ordered, one request at a time after the previous is mined;
   post-broadcast integrity verification; replacement detection; recovery of transactions sent
   while the page was reloading; abandonment and timeouts.

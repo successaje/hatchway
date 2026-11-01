@@ -13,7 +13,17 @@ No Docker, database, cloud account, API key or private key is needed.
 
 ## Install
 
-Hatchway is not on npm yet. Until the first release, install from source:
+Hatchway is published on npm as [`hatchway`](https://www.npmjs.com/package/hatchway):
+
+```bash
+npm install --global hatchway        # global CLI
+npm install --save-dev hatchway      # per project (required for the Hardhat plugin)
+npx hatchway --help                  # zero-install
+```
+
+### From source
+
+To run unreleased changes, build from a clone:
 
 ```bash
 git clone https://github.com/successaje/hatchway
@@ -27,8 +37,8 @@ cd hatchway && pnpm install && pnpm build
 npm link ./packages/hatchway
 ```
 
-`npm link` puts a `hatchway` command on your `PATH`. To install from a tarball instead (useful
-for testing a release candidate in another project):
+`npm link` puts a `hatchway` command on your `PATH`. To install a build in another project
+instead, pack it into a tarball:
 
 ```bash
 pnpm --filter hatchway pack --pack-destination .
@@ -36,14 +46,6 @@ pnpm --filter hatchway pack --pack-destination .
 
 ```bash
 npm install --global ./hatchway-0.1.0.tgz
-```
-
-Once published, any of these will work:
-
-```bash
-npm install --global hatchway        # global CLI
-npm install --save-dev hatchway      # per project (required for the Hardhat plugin)
-npx hatchway --help                  # zero-install
 ```
 
 The package bundles the browser page, so there is no separate frontend to build or serve.

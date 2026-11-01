@@ -22,10 +22,10 @@ your tools normally put them. Your private key never leaves the wallet.
 - **Built for automation.** `--json` emits NDJSON events, so scripts and AI coding agents can
   prepare deployments while a human approves each transaction.
 
-> Status: **0.1.0, pre-release.** Verified end-to-end on Anvil with forge 1.6 and Hardhat 3.21
-> using a deterministic test wallet, and with real MetaMask for forge deployments (1 and 5
-> transactions) on BNB Smart Chain Testnet. The full MetaMask/Rabby acceptance checklist is pending. Not yet published to
-> npm. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
+> Status: **0.1.0, early release**, on npm as [`hatchway`](https://www.npmjs.com/package/hatchway).
+> Verified end-to-end on Anvil with forge 1.6 and Hardhat 3.21 using a deterministic test wallet,
+> and with real MetaMask for forge deployments (1 and 5 transactions) on BNB Smart Chain Testnet.
+> The full MetaMask/Rabby acceptance checklist is pending. See [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Contents
 
@@ -38,14 +38,14 @@ your tools normally put them. Your private key never leaves the wallet.
 Five minutes, on a local Anvil node, with the example project in this repository.
 
 **You need:** Node.js 22+, [Foundry](https://getfoundry.sh), and a browser with MetaMask or
-Rabby. Until Hatchway is published to npm, build it from source (one minute):
+Rabby. Install Hatchway, then clone this repository for its example project:
 
 ```bash
-git clone https://github.com/successaje/hatchway && cd hatchway
+npm install --global hatchway
 ```
 
 ```bash
-pnpm install && pnpm build && npm link ./packages/hatchway
+git clone https://github.com/successaje/hatchway && cd hatchway
 ```
 
 1. **Start a local chain** in its own terminal:
@@ -141,11 +141,11 @@ The step-by-step version, including MetaMask setup, is in
 
 Hatchway is a Node.js CLI (Node 22 or newer). No Docker, database, cloud account or API key.
 
-| Method                                 | Command                                                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| From source (works today)              | `pnpm install && pnpm build && npm link ./packages/hatchway`                                            |
-| From a release tarball                 | `npm install -g ./hatchway-0.1.0.tgz` (build one with `pnpm --filter hatchway pack`)                    |
-| From npm (**after the first release**) | `npm install -g hatchway`, or per project: `npm install -D hatchway`, or zero-install: `npx hatchway …` |
+| Method         | Command                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| From npm       | `npm install -g hatchway`, or per project: `npm install -D hatchway`, or zero-install: `npx hatchway …` |
+| From source    | `pnpm install && pnpm build && npm link ./packages/hatchway`                                            |
+| From a tarball | `npm install -g ./hatchway-0.1.0.tgz` (build one with `pnpm --filter hatchway pack`)                    |
 
 Then check your setup:
 

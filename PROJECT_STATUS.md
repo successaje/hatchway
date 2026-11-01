@@ -8,8 +8,8 @@ Hatchway 0.1.0 is functionally complete for local and testnet use with Foundry a
 verified end to end on Anvil with a deterministic test wallet, and across platforms in CI. A real
 MetaMask install ran two `hatchway forge` deployments (1 and 5 transactions) on BNB Smart Chain
 Testnet. It is
-**not yet published** to npm, the full MetaMask acceptance checklist has not been run, and
-**Rabby is untested**.
+**published on npm** as `hatchway` 0.1.0. The full MetaMask acceptance checklist has not been
+run, and **Rabby is untested**.
 
 ## Completed
 
@@ -78,6 +78,15 @@ Every result below was checked independently with `cast` against a second RPC
 Not covered by these runs: rejection, reload and account switching with a real extension,
 Hardhat on a public network, and Rabby.
 
+## Release
+
+`hatchway@0.1.0` was published to npm on 2026-11-01 by `finishr`, from a clean build of commit
+`a9d5548`. The published tarball's shasum (`73da48db035274f6ee9ef8dcb0a5c11b62936c08`, 87 files)
+matches the locally packed build, and a fresh `npm install hatchway@0.1.0` runs `version`,
+`doctor` and loads `hatchway/hardhat`. npm's staged-publishing flow also left a placeholder
+version, `0.0.0-stage` ("Temporary package placeholder for staged publishing"); `latest` points
+to 0.1.0. The GitHub repository was made public the same day.
+
 ## Remaining work
 
 1. **Manual acceptance with MetaMask and Rabby** (docs/guides/manual-acceptance.md). MetaMask
@@ -85,8 +94,10 @@ Hardhat on a public network, and Rabby.
    results go in the release notes.
 2. **Hardhat 3 on a public testnet** (forge single- and multi-transaction runs on BNB Smart
    Chain Testnet are done).
-3. **First npm release**: publish `hatchway` 0.1.0 (owner action), then configure npm trusted
-   publishing for the release workflow.
+3. **Trusted publishing for later releases**: on npmjs.com, add `successaje/hatchway` with the
+   `release.yml` workflow and the `npm` environment as a trusted publisher for `hatchway`.
+   Until then, tag pushes cannot publish. Do not push a `v0.1.0` tag: 0.1.0 is already on npm,
+   so the workflow would fail; the next tag is `v0.1.1` or later.
 4. Windows end-to-end flows (integration tests use POSIX signals and `pgrep`; unit/security
    tests pass on Windows).
 5. Possible next features: persistent multi-run session (`connect` covers part of this),
@@ -106,4 +117,4 @@ Hardhat on a public network, and Rabby.
 
 Run the manual acceptance checklist with MetaMask and Rabby against Anvil (rejection, reload and
 account switching are the parts not yet seen with a real extension) and a Hardhat 3 run on BNB
-Smart Chain Testnet; fix anything they find, then tag `v0.1.0`.
+Smart Chain Testnet; fix anything they find, then release 0.1.1 through the tag workflow.
