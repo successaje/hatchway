@@ -28,8 +28,30 @@ interface ForgeRun {
   stderr: string;
 }
 
-async function forge(script: string, opts: { decide?: (r: RequestView) => Decision; ignoreNonce?: boolean; chainId?: number; extra?: string[]; env?: NodeJS.ProcessEnv; onWallet?: (w: HeadlessWallet) => Promise<void> } = {}): Promise<ForgeRun> {
-  const run = runCli(["forge", "--json", "--no-open", script, "--rpc-url", anvil.url, "--broadcast", ...(opts.extra ?? [])], { cwd: FOUNDRY_EXAMPLE, ...(opts.env ? { env: opts.env } : {}) });
+async function forge(
+  script: string,
+  opts: {
+    decide?: (r: RequestView) => Decision;
+    ignoreNonce?: boolean;
+    chainId?: number;
+    extra?: string[];
+    env?: NodeJS.ProcessEnv;
+    onWallet?: (w: HeadlessWallet) => Promise<void>;
+  } = {},
+): Promise<ForgeRun> {
+  const run = runCli(
+    [
+      "forge",
+      "--json",
+      "--no-open",
+      script,
+      "--rpc-url",
+      anvil.url,
+      "--broadcast",
+      ...(opts.extra ?? []),
+    ],
+    { cwd: FOUNDRY_EXAMPLE, ...(opts.env ? { env: opts.env } : {}) },
+  );
   const url = await run.sessionUrl;
   const wallet = await HeadlessWallet.open({
     sessionUrl: url,
@@ -48,7 +70,13 @@ async function forge(script: string, opts: { decide?: (r: RequestView) => Decisi
 }
 
 function transactions(result: CliEvent) {
-  return result.transactions as { title: string; state: string; hash?: string; contractAddress?: string; contractName?: string }[];
+  return result.transactions as {
+    title: string;
+    state: string;
+    hash?: string;
+    contractAddress?: string;
+    contractName?: string;
+  }[];
 }
 
 describe("hatchway forge (Foundry, real forge + anvil)", () => {
@@ -56,7 +84,11 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     const run = await forge("script/DeployCounter.s.sol");
     expect(run.code, run.stderr).toBe(0);
     const [tx] = transactions(run.result);
-    expect(tx).toMatchObject({ state: "confirmed", contractName: "Counter", title: "Deploy Counter" });
+    expect(tx).toMatchObject({
+      state: "confirmed",
+      contractName: "Counter",
+      title: "Deploy Counter",
+    });
     const address = tx!.contractAddress as Address;
     expect(await anvil.client.getCode({ address })).toMatch(/^0x[0-9a-f]{10,}/);
     const receipt = await anvil.client.getTransactionReceipt({ hash: tx!.hash as `0x${string}` });
@@ -65,7 +97,9 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     expect(receipt.contractAddress && getAddress(receipt.contractAddress)).toBe(address);
     const record = run.result.runRecord as string;
     expect(existsSync(join(FOUNDRY_EXAMPLE, record))).toBe(true);
-    const saved = JSON.parse(readFileSync(join(FOUNDRY_EXAMPLE, record), "utf8")) as { transactions: { hash: string }[] };
+    const saved = JSON.parse(readFileSync(join(FOUNDRY_EXAMPLE, record), "utf8")) as {
+      transactions: { hash: string }[];
+    };
     expect(saved.transactions[0]!.hash).toBe(tx!.hash);
     expect(run.result.broadcastFile).toBeTruthy();
   });
@@ -80,13 +114,29 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     });
     expect(run.code, run.stderr).toBe(0);
     expect(seen?.review?.contractName).toBe("HatchToken");
-    expect(seen?.review?.constructorArgs?.map((a) => a.value)).toEqual(['"Hatch Token"', '"HATCH"', "1000000000000000000000000"]);
+    expect(seen?.review?.constructorArgs?.map((a) => a.value)).toEqual([
+      '"Hatch Token"',
+      '"HATCH"',
+      "1000000000000000000000000",
+    ]);
     expect(seen?.review?.simulation.status).toBe("passed");
     expect(seen?.review?.predictedAddress).toBe(transactions(run.result)[0]!.contractAddress);
     const token = transactions(run.result)[0]!.contractAddress as Address;
-    const abi = parseAbi(["function symbol() view returns (string)", "function balanceOf(address) view returns (uint256)"]);
-    expect(await anvil.client.readContract({ address: token, abi, functionName: "symbol" })).toBe("HATCH");
-    expect(await anvil.client.readContract({ address: token, abi, functionName: "balanceOf", args: [deployer] })).toBe(10n ** 24n);
+    const abi = parseAbi([
+      "function symbol() view returns (string)",
+      "function balanceOf(address) view returns (uint256)",
+    ]);
+    expect(await anvil.client.readContract({ address: token, abi, functionName: "symbol" })).toBe(
+      "HATCH",
+    );
+    expect(
+      await anvil.client.readContract({
+        address: token,
+        abi,
+        functionName: "balanceOf",
+        args: [deployer],
+      }),
+    ).toBe(10n ** 24n);
   });
 
   it("runs a multi-transaction script one approval at a time, in nonce order", async () => {
@@ -98,25 +148,52 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
       },
     });
     expect(run.code, run.stderr).toBe(0);
-    expect(reviewed).toEqual(["Deploy HatchToken", "Deploy Registry", "Registry.initialize", "Registry.register", "Registry.transferOwnership"]);
+    expect(reviewed).toEqual([
+      "Deploy HatchToken",
+      "Deploy Registry",
+      "Registry.initialize",
+      "Registry.register",
+      "Registry.transferOwnership",
+    ]);
     const txs = transactions(run.result);
     expect(txs.every((t) => t.state === "confirmed")).toBe(true);
     const registry = txs[1]!.contractAddress as Address;
-    const abi = parseAbi(["function owner() view returns (address)", "function token() view returns (address)", "function initialized() view returns (bool)"]);
-    expect(await anvil.client.readContract({ address: registry, abi, functionName: "owner" })).toBe("0x000000000000000000000000000000000000bEEF");
-    expect(await anvil.client.readContract({ address: registry, abi, functionName: "token" })).toBe(txs[0]!.contractAddress);
-    expect(await anvil.client.readContract({ address: registry, abi, functionName: "initialized" })).toBe(true);
+    const abi = parseAbi([
+      "function owner() view returns (address)",
+      "function token() view returns (address)",
+      "function initialized() view returns (bool)",
+    ]);
+    expect(await anvil.client.readContract({ address: registry, abi, functionName: "owner" })).toBe(
+      "0x000000000000000000000000000000000000bEEF",
+    );
+    expect(await anvil.client.readContract({ address: registry, abi, functionName: "token" })).toBe(
+      txs[0]!.contractAddress,
+    );
+    expect(
+      await anvil.client.readContract({ address: registry, abi, functionName: "initialized" }),
+    ).toBe(true);
   });
 
   it("deploys an initialized proxy and calls through it", async () => {
     const run = await forge("script/DeployProxy.s.sol");
     expect(run.code, run.stderr).toBe(0);
     const txs = transactions(run.result);
-    expect(txs.map((t) => t.title)).toEqual(["Deploy BoxV1", "Deploy ERC1967Proxy", "BoxV1.setValue"]);
+    expect(txs.map((t) => t.title)).toEqual([
+      "Deploy BoxV1",
+      "Deploy ERC1967Proxy",
+      "BoxV1.setValue",
+    ]);
     const proxy = txs[1]!.contractAddress as Address;
-    const abi = parseAbi(["function value() view returns (uint256)", "function admin() view returns (address)"]);
-    expect(await anvil.client.readContract({ address: proxy, abi, functionName: "value" })).toBe(43n);
-    expect(await anvil.client.readContract({ address: proxy, abi, functionName: "admin" })).toBe(deployer);
+    const abi = parseAbi([
+      "function value() view returns (uint256)",
+      "function admin() view returns (address)",
+    ]);
+    expect(await anvil.client.readContract({ address: proxy, abi, functionName: "value" })).toBe(
+      43n,
+    );
+    expect(await anvil.client.readContract({ address: proxy, abi, functionName: "admin" })).toBe(
+      deployer,
+    );
   });
 
   it("propagates a revert found during forge's simulation without asking the wallet", async () => {
@@ -147,7 +224,9 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
       },
     });
     expect(run.code, run.stderr).toBe(0);
-    expect(run.events.some((e) => e.event === "wallet_issue" && e.issue === "wrong_chain")).toBe(true);
+    expect(run.events.some((e) => e.event === "wallet_issue" && e.issue === "wrong_chain")).toBe(
+      true,
+    );
   });
 
   it("works with a wallet that ignores the requested nonce (MetaMask behaviour)", async () => {
@@ -162,17 +241,50 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
   });
 
   it("rejects conflicting signer flags before starting a session", async () => {
-    const run = runCli(["forge", "--json", "--no-open", "script/DeployCounter.s.sol", "--rpc-url", anvil.url, "--broadcast", "--private-key", "0x01"], { cwd: FOUNDRY_EXAMPLE });
+    const run = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+        "--private-key",
+        "0x01",
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
     expect(await run.exited).toBe(2);
     expect(run.result()?.error).toMatchObject({ code: "UNSUPPORTED_SIGNER" });
     expect(run.events.some((e) => e.event === "session")).toBe(false);
   });
 
   it("stops forge and closes the session on Ctrl+C without leaving processes behind", async () => {
-    const run = runCli(["forge", "--json", "--no-open", "script/DeployCounter.s.sol", "--rpc-url", anvil.url, "--broadcast"], { cwd: FOUNDRY_EXAMPLE });
-    const wallet = await HeadlessWallet.open({ sessionUrl: await run.sessionUrl, nodeUrl: anvil.url, address: deployer, decide: () => ({ action: "ignore" }) });
+    const run = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: deployer,
+      decide: () => ({ action: "ignore" }),
+    });
     await wallet.waitFor((s) => s.requests.some((r) => r.state === "review"));
-    const forgePids = execFileSync("pgrep", ["-P", String(run.child.pid)]).toString().trim().split("\n").filter(Boolean);
+    const forgePids = execFileSync("pgrep", ["-P", String(run.child.pid)])
+      .toString()
+      .trim()
+      .split("\n")
+      .filter(Boolean);
     expect(forgePids.length).toBeGreaterThan(0);
     run.child.kill("SIGINT");
     const code = await run.exited;
@@ -191,12 +303,16 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
         action: "approve",
         // Simulates the user sending something else from this account mid-session.
         before: async () => {
-          await rpc(anvil.url, "eth_sendTransaction", [{ from: deployer, to: ANVIL_ACCOUNTS[1], value: "0x1" }]);
+          await rpc(anvil.url, "eth_sendTransaction", [
+            { from: deployer, to: ANVIL_ACCOUNTS[1], value: "0x1" },
+          ]);
         },
       }),
     });
     expect(run.code).toBe(9);
     expect(run.result.error).toMatchObject({ code: "INTEGRITY_MISMATCH" });
-    expect(String((run.result.error as { message: string }).message)).toMatch(/nonce is \d+, expected \d+/);
+    expect(String((run.result.error as { message: string }).message)).toMatch(
+      /nonce is \d+, expected \d+/,
+    );
   });
 });

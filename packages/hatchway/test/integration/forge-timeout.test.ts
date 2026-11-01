@@ -19,7 +19,18 @@ describe("slow approvals with forge", () => {
   // Some forge versions drop an eth_sendTransaction after 45 s regardless of --rpc-timeout
   // and retry it. The retry must join the open approval rather than create a second one.
   it("survives an approval that takes longer than forge's request timeout", async () => {
-    const run = runCli(["forge", "--json", "--no-open", "script/DeployCounter.s.sol", "--rpc-url", anvil.url, "--broadcast"], { cwd: FOUNDRY_EXAMPLE });
+    const run = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
     const wallet = await HeadlessWallet.open({
       sessionUrl: await run.sessionUrl,
       nodeUrl: anvil.url,

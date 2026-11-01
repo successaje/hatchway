@@ -29,7 +29,9 @@ export interface Anvil {
   stop: () => Promise<void>;
 }
 
-export async function startAnvil(options: { chainId?: number; blockTime?: number } = {}): Promise<Anvil> {
+export async function startAnvil(
+  options: { chainId?: number; blockTime?: number } = {},
+): Promise<Anvil> {
   const port = await freePort();
   const args = ["--port", String(port), "--host", "127.0.0.1", "--silent"];
   if (options.chainId) args.push("--chain-id", String(options.chainId));
@@ -64,7 +66,11 @@ export async function startAnvil(options: { chainId?: number; blockTime?: number
 }
 
 /** Raw JSON-RPC call (used for anvil_* and wallet methods viem does not expose). */
-export async function rpc<T = unknown>(url: string, method: string, params: unknown[] = []): Promise<T> {
+export async function rpc<T = unknown>(
+  url: string,
+  method: string,
+  params: unknown[] = [],
+): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },

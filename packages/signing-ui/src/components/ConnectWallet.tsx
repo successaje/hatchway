@@ -18,8 +18,13 @@ export function ConnectWallet({ snapshot, wallets, connectingId, error, onConnec
       <h1 id="connect-title">Connect your wallet</h1>
       <p class="lede">
         Your terminal is waiting to run <code class="mono">{purpose.title}</code>
-        {purpose.project && purpose.project !== "." ? <> in <code class="mono">{purpose.project}</code></> : null}. Choose the wallet
-        that should approve its transactions.
+        {purpose.project && purpose.project !== "." ? (
+          <>
+            {" "}
+            in <code class="mono">{purpose.project}</code>
+          </>
+        ) : null}
+        . Choose the wallet that should approve its transactions.
       </p>
 
       {snapshot.expectedAddress ? (
@@ -48,10 +53,18 @@ export function ConnectWallet({ snapshot, wallets, connectingId, error, onConnec
                 onClick={() => onConnect(wallet)}
                 aria-describedby={busy ? "connect-status" : undefined}
               >
-                <span class="wallet-icon">{wallet.icon ? <img src={wallet.icon} alt="" width={28} height={28} /> : <WalletIcon />}</span>
+                <span class="wallet-icon">
+                  {wallet.icon ? (
+                    <img src={wallet.icon} alt="" width={28} height={28} />
+                  ) : (
+                    <WalletIcon />
+                  )}
+                </span>
                 <span class="wallet-name">
                   {wallet.name}
-                  <span class="wallet-meta">{wallet.legacy ? "Injected provider" : (wallet.rdns ?? "EIP-6963")}</span>
+                  <span class="wallet-meta">
+                    {wallet.legacy ? "Injected provider" : (wallet.rdns ?? "EIP-6963")}
+                  </span>
                 </span>
                 {busy ? (
                   <span class="wallet-state" id="connect-status">
@@ -94,14 +107,21 @@ function NoWallet() {
       <p class="empty-title">No browser wallet found</p>
       {mobile ? (
         <p>
-          This link only works in a desktop browser on the computer running Hatchway, with a wallet extension such as
-          MetaMask or Rabby. Mobile wallets are not supported yet.
+          This link only works in a desktop browser on the computer running Hatchway, with a wallet
+          extension such as MetaMask or Rabby. Mobile wallets are not supported yet.
         </p>
       ) : (
         <p>
-          Install <a href="https://metamask.io/download/" target="_blank" rel="noreferrer noopener">MetaMask</a> or{" "}
-          <a href="https://rabby.io/" target="_blank" rel="noreferrer noopener">Rabby</a> in this browser and reload. If your wallet lives
-          in another browser, reopen the session from there: your terminal prints a fresh link when this tab is closed.
+          Install{" "}
+          <a href="https://metamask.io/download/" target="_blank" rel="noreferrer noopener">
+            MetaMask
+          </a>{" "}
+          or{" "}
+          <a href="https://rabby.io/" target="_blank" rel="noreferrer noopener">
+            Rabby
+          </a>{" "}
+          in this browser and reload. If your wallet is in another browser, open the link from your
+          terminal there instead.
         </p>
       )}
     </div>

@@ -15,7 +15,13 @@ const STATE_TEXT: Partial<Record<RequestView["state"], string>> = {
   cancelled: "Withdrawn",
 };
 
-export function Activity({ snapshot, currentId }: { snapshot: SessionSnapshot; currentId: string | undefined }) {
+export function Activity({
+  snapshot,
+  currentId,
+}: {
+  snapshot: SessionSnapshot;
+  currentId: string | undefined;
+}) {
   const requests = snapshot.requests;
   if (requests.length === 0) return null;
   const explorer = snapshot.chain?.explorerUrl;
@@ -33,19 +39,36 @@ export function Activity({ snapshot, currentId }: { snapshot: SessionSnapshot; c
           const address = request.result?.contractAddress;
           const hash = request.result?.hash;
           return (
-            <li key={request.id} class={`activity-item tone-${tone} ${request.id === currentId ? "is-current" : ""}`}>
+            <li
+              key={request.id}
+              class={`activity-item tone-${tone} ${request.id === currentId ? "is-current" : ""}`}
+            >
               <span class="activity-icon" aria-hidden="true">
-                {tone === "good" ? <CheckIcon /> : tone === "bad" ? <CrossIcon /> : request.state === "queued" ? <span class="dot" /> : <Spinner />}
+                {tone === "good" ? (
+                  <CheckIcon />
+                ) : tone === "bad" ? (
+                  <CrossIcon />
+                ) : request.state === "queued" ? (
+                  <span class="dot" />
+                ) : (
+                  <Spinner />
+                )}
               </span>
               <span class="activity-main">
                 <span class="activity-title">
                   <span class="activity-index">{request.index}</span>
                   {request.review?.title ?? request.signatureReview?.title ?? "Request"}
                 </span>
-                {request.error && tone === "bad" ? <span class="activity-error">{request.error.message}</span> : null}
+                {request.error && tone === "bad" ? (
+                  <span class="activity-error">{request.error.message}</span>
+                ) : null}
                 {address ? (
                   <span class="activity-meta">
-                    at <Hex value={address} href={explorer ? `${explorer}/address/${address}` : undefined} />
+                    at{" "}
+                    <Hex
+                      value={address}
+                      href={explorer ? `${explorer}/address/${address}` : undefined}
+                    />
                   </span>
                 ) : hash ? (
                   <span class="activity-meta">
@@ -53,7 +76,9 @@ export function Activity({ snapshot, currentId }: { snapshot: SessionSnapshot; c
                   </span>
                 ) : null}
               </span>
-              <span class="activity-state">{waitingText(request) ?? STATE_TEXT[request.state] ?? request.state}</span>
+              <span class="activity-state">
+                {waitingText(request) ?? STATE_TEXT[request.state] ?? request.state}
+              </span>
             </li>
           );
         })}

@@ -39,7 +39,10 @@ const CONFLICTING_SIGNERS = new Set([
 ]);
 
 const UNSUPPORTED = new Map([
-  ["--multi", "Multi-chain broadcasting (--multi) is not supported: only the primary --rpc-url is routed through your wallet."],
+  [
+    "--multi",
+    "Multi-chain broadcasting (--multi) is not supported: only the primary --rpc-url is routed through your wallet.",
+  ],
   ["--debug", "The script debugger cannot be combined with wallet signing."],
 ]);
 
@@ -58,10 +61,14 @@ export interface ForgeInvocation {
   hasRpcTimeout: boolean;
 }
 
-function flagValue(args: readonly string[], index: number): { name: string; value: string | undefined; consumed: number } {
+function flagValue(
+  args: readonly string[],
+  index: number,
+): { name: string; value: string | undefined; consumed: number } {
   const token = args[index]!;
   const eq = token.indexOf("=");
-  if (token.startsWith("--") && eq !== -1) return { name: token.slice(0, eq), value: token.slice(eq + 1), consumed: 0 };
+  if (token.startsWith("--") && eq !== -1)
+    return { name: token.slice(0, eq), value: token.slice(eq + 1), consumed: 0 };
   return { name: token, value: args[index + 1], consumed: 1 };
 }
 
@@ -82,7 +89,10 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
     const token = args[i]!;
     const base = token.split("=")[0]!;
     if (CONFLICTING_SIGNERS.has(base)) {
-      throw new HatchwayError("UNSUPPORTED_SIGNER", `${base} selects a different signer. Hatchway signs with your browser wallet, so remove it.`);
+      throw new HatchwayError(
+        "UNSUPPORTED_SIGNER",
+        `${base} selects a different signer. Hatchway signs with your browser wallet, so remove it.`,
+      );
     }
     const unsupported = UNSUPPORTED.get(base);
     if (unsupported) throw new HatchwayError("UNSUPPORTED_SIGNER", unsupported);
@@ -101,7 +111,11 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
     } else if (base === "--broadcast") result.broadcast = true;
     else if (base === "--slow") result.hasSlow = true;
     else if (base === "--rpc-timeout") result.hasRpcTimeout = true;
-    else if (!token.startsWith("-") && result.script === undefined && (token.endsWith(".sol") || token.includes(".sol:"))) {
+    else if (
+      !token.startsWith("-") &&
+      result.script === undefined &&
+      (token.endsWith(".sol") || token.includes(".sol:"))
+    ) {
       result.script = token;
     }
   }
@@ -116,7 +130,11 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
  *  - `--slow` sends one transaction at a time, matching one wallet approval at a time and
  *    giving each approval its own RPC timeout window.
  */
-export function buildForgeArgs(invocation: ForgeInvocation, bridgeRpcUrl: string, sender: string): string[] {
+export function buildForgeArgs(
+  invocation: ForgeInvocation,
+  bridgeRpcUrl: string,
+  sender: string,
+): string[] {
   const out: string[] = [];
   const args = invocation.args;
   let replacedRpc = false;
@@ -156,7 +174,10 @@ interface ForgeConfig {
 
 async function forgeConfig(root: string): Promise<ForgeConfig> {
   try {
-    const { stdout } = await execFileAsync("forge", ["config", "--json"], { cwd: root, maxBuffer: 16 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("forge", ["config", "--json"], {
+      cwd: root,
+      maxBuffer: 16 * 1024 * 1024,
+    });
     return JSON.parse(stdout) as ForgeConfig;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") throw foundryMissing();
@@ -168,7 +189,10 @@ function interpolateEnv(value: string, env: NodeJS.ProcessEnv): string {
   return value.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name: string) => {
     const resolved = env[name];
     if (resolved === undefined) {
-      throw new HatchwayError("USAGE", `foundry.toml references \${${name}}, but it is not set in the environment.`);
+      throw new HatchwayError(
+        "USAGE",
+        `foundry.toml references \${${name}}, but it is not set in the environment.`,
+      );
     }
     return resolved;
   });
@@ -177,14 +201,21 @@ function interpolateEnv(value: string, env: NodeJS.ProcessEnv): string {
 const URL_PATTERN = /^(https?|wss?):\/\//i;
 
 /** Resolves the endpoint forge would use: a URL, a foundry.toml alias, ETH_RPC_URL, or config. */
-export async function resolveForgeRpc(value: string | undefined, root: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
+export async function resolveForgeRpc(
+  value: string | undefined,
+  root: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<string> {
   if (value && URL_PATTERN.test(value)) return value;
   if (value) {
     const config = await forgeConfig(root);
     const entry = config.rpc_endpoints?.[value];
     const raw = typeof entry === "string" ? entry : (entry?.endpoint ?? entry?.url);
     if (!raw) {
-      throw new HatchwayError("USAGE", `"${value}" is not a URL or an rpc_endpoints alias in foundry.toml.`);
+      throw new HatchwayError(
+        "USAGE",
+        `"${value}" is not a URL or an rpc_endpoints alias in foundry.toml.`,
+      );
     }
     return interpolateEnv(raw, env);
   }
@@ -197,22 +228,34 @@ export async function resolveForgeRpc(value: string | undefined, root: string, e
 }
 
 export function foundryMissing(): HatchwayError {
-  return new HatchwayError("TOOL_NOT_FOUND", "Foundry is not installed (forge was not found on PATH).", {
-    hint: "Install it with `curl -L https://foundry.paradigm.xyz | bash && foundryup`, then open a new terminal.",
-  });
+  return new HatchwayError(
+    "TOOL_NOT_FOUND",
+    "Foundry is not installed (forge was not found on PATH).",
+    {
+      hint: "Install it with `curl -L https://foundry.paradigm.xyz | bash && foundryup`, then open a new terminal.",
+    },
+  );
 }
 
 export async function forgeVersion(): Promise<string | undefined> {
   try {
     const { stdout } = await execFileAsync("forge", ["--version"]);
-    return stdout.split("\n")[0]?.replace(/^forge\s+(Version:\s*)?/i, "").trim();
+    return stdout
+      .split("\n")[0]
+      ?.replace(/^forge\s+(Version:\s*)?/i, "")
+      .trim();
   } catch {
     return undefined;
   }
 }
 
 /** Finds the broadcast file forge wrote for this run, if any. */
-export async function findBroadcastFile(root: string, script: string | undefined, chainId: number, since: number): Promise<string | undefined> {
+export async function findBroadcastFile(
+  root: string,
+  script: string | undefined,
+  chainId: number,
+  since: number,
+): Promise<string | undefined> {
   if (!script) return undefined;
   const file = basename(script.split(":")[0]!);
   const dir = join(root, "broadcast", file, String(chainId));

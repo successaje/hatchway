@@ -9,7 +9,10 @@ import { HELP } from "./help.js";
 import { Reporter } from "./output.js";
 import { VERSION } from "./version.js";
 
-type Command = (argv: string[], reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter) => Promise<number>;
+type Command = (
+  argv: string[],
+  reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter,
+) => Promise<number>;
 
 const COMMANDS: Record<string, Command> = {
   forge: forgeCommand,
@@ -41,7 +44,9 @@ export async function main(argv: string[]): Promise<number> {
     }
     const handler = COMMANDS[command];
     if (!handler) {
-      throw new HatchwayError("USAGE", `Unknown command "${command}".`, { hint: "Run `hatchway help` to see the commands." });
+      throw new HatchwayError("USAGE", `Unknown command "${command}".`, {
+        hint: "Run `hatchway help` to see the commands.",
+      });
     }
     return await handler(rest, reporterFor);
   } catch (error) {
@@ -49,7 +54,12 @@ export async function main(argv: string[]): Promise<number> {
     const out = reporter ?? reporterFor(argv.includes("--json"), argv.includes("--debug"));
     out.error(hatchway);
     out.line();
-    out.event({ event: "result", ok: false, exitCode: hatchway.exitCode, error: { code: hatchway.code, message: hatchway.message } });
+    out.event({
+      event: "result",
+      ok: false,
+      exitCode: hatchway.exitCode,
+      error: { code: hatchway.code, message: hatchway.message },
+    });
     return hatchway.exitCode;
   }
 }

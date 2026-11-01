@@ -83,7 +83,11 @@ export class HatchwayServer {
       const onError = (error: NodeJS.ErrnoException) => {
         this.#server.off("listening", onListening);
         if (error.code === "EADDRINUSE") {
-          reject(new HatchwayError("PORT_IN_USE", `Port ${this.#options.port} is already in use.`, { hint: "Choose another port with --port, or omit it to pick a free one." }));
+          reject(
+            new HatchwayError("PORT_IN_USE", `Port ${this.#options.port} is already in use.`, {
+              hint: "Choose another port with --port, or omit it to pick a free one.",
+            }),
+          );
         } else reject(error);
       };
       const onListening = () => {
@@ -108,7 +112,10 @@ export class HatchwayServer {
 
   async #route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!isLoopbackHost(req.headers.host)) {
-      sendJson(res, 421, { error: "BAD_HOST", message: "Requests must address 127.0.0.1 or localhost." });
+      sendJson(res, 421, {
+        error: "BAD_HOST",
+        message: "Requests must address 127.0.0.1 or localhost.",
+      });
       return;
     }
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -142,7 +149,10 @@ export class HatchwayServer {
     const prefix = `/api/s/${session.id}/`;
     if (path.startsWith("/api/")) {
       if (!path.startsWith(prefix)) {
-        return sendJson(res, 404, { error: "UNKNOWN_SESSION", message: "This session does not exist or has ended." });
+        return sendJson(res, 404, {
+          error: "UNKNOWN_SESSION",
+          message: "This session does not exist or has ended.",
+        });
       }
       return this.#api(req, res, method, path.slice(prefix.length));
     }
@@ -155,20 +165,33 @@ export class HatchwayServer {
     sendStatus(res, 404);
   }
 
-  async #api(req: IncomingMessage, res: ServerResponse, method: string, route: string): Promise<void> {
+  async #api(
+    req: IncomingMessage,
+    res: ServerResponse,
+    method: string,
+    route: string,
+  ): Promise<void> {
     const { session, engine } = this.#options;
 
     if (method === "GET" && route === "events") {
-      if (!session.authenticate(bearerToken(req))) return sendJson(res, 401, { error: "UNAUTHORIZED", message: "Not paired with this session." });
+      if (!session.authenticate(bearerToken(req)))
+        return sendJson(res, 401, {
+          error: "UNAUTHORIZED",
+          message: "Not paired with this session.",
+        });
       return this.#events(req, res, bearerToken(req)!);
     }
     if (method !== "POST") return sendStatus(res, 405);
     if (!isSameOriginRequest(req)) {
-      return sendJson(res, 403, { error: "FORBIDDEN_ORIGIN", message: "Cross-origin requests are not allowed." });
+      return sendJson(res, 403, {
+        error: "FORBIDDEN_ORIGIN",
+        message: "Cross-origin requests are not allowed.",
+      });
     }
 
     if (route === "claim") {
-      if (this.#failedClaims >= MAX_FAILED_CLAIMS) return sendJson(res, 429, { error: "LOCKED", message: "Too many attempts." });
+      if (this.#failedClaims >= MAX_FAILED_CLAIMS)
+        return sendJson(res, 429, { error: "LOCKED", message: "Too many attempts." });
       const body = (await readJson(req, API_BODY_LIMIT)) as { code?: unknown };
       if (typeof body.code !== "string") throw new HatchwayError("USAGE", "Missing pairing code.");
       try {
@@ -182,7 +205,10 @@ export class HatchwayServer {
     }
 
     if (!session.authenticate(bearerToken(req))) {
-      return sendJson(res, 401, { error: "UNAUTHORIZED", message: "Not paired with this session." });
+      return sendJson(res, 401, {
+        error: "UNAUTHORIZED",
+        message: "Not paired with this session.",
+      });
     }
 
     if (route === "wallet") {
@@ -196,7 +222,8 @@ export class HatchwayServer {
     const match = /^requests\/([A-Za-z0-9_-]{8,64})\/(begin|result)$/.exec(route);
     if (match) {
       const request = session.findRequest(match[1]!);
-      if (!request) return sendJson(res, 404, { error: "UNKNOWN_REQUEST", message: "Unknown request." });
+      if (!request)
+        return sendJson(res, 404, { error: "UNKNOWN_REQUEST", message: "Unknown request." });
       const body = await readJson(req, API_BODY_LIMIT);
       if (match[2] === "begin") engine.begin(request, parseBegin(body));
       else engine.report(request, parseResult(body));
@@ -251,7 +278,10 @@ export class HatchwayServer {
 
   async #rpc(req: IncomingMessage, res: ServerResponse, token: string): Promise<void> {
     if (looksLikeBrowserRequest(req)) {
-      return sendJson(res, 403, { error: "FORBIDDEN", message: "The RPC endpoint is for local tools, not browsers." });
+      return sendJson(res, 403, {
+        error: "FORBIDDEN",
+        message: "The RPC endpoint is for local tools, not browsers.",
+      });
     }
     if (!constantTimeEqual(token, this.#options.rpcToken)) return sendStatus(res, 404);
     const body = await readBody(req, RPC_BODY_LIMIT);
@@ -275,18 +305,26 @@ export class HatchwayServer {
     }
     const hatchway = toHatchwayError(error);
     const status = STATUS_BY_CODE[hatchway.code] ?? (hatchway.code === "INTERNAL" ? 500 : 400);
-    sendJson(res, status, { error: hatchway.code, message: hatchway.code === "INTERNAL" ? "Internal error." : hatchway.message });
+    sendJson(res, status, {
+      error: hatchway.code,
+      message: hatchway.code === "INTERNAL" ? "Internal error." : hatchway.message,
+    });
   }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new HatchwayError("USAGE", "Expected an object.");
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    throw new HatchwayError("USAGE", "Expected an object.");
   return value as Record<string, unknown>;
 }
 
 function parseWalletUpdate(value: unknown): WalletUpdate {
   const input = asRecord(value);
-  if (typeof input.address !== "string" || typeof input.chainId !== "number" || typeof input.name !== "string") {
+  if (
+    typeof input.address !== "string" ||
+    typeof input.chainId !== "number" ||
+    typeof input.name !== "string"
+  ) {
     throw new HatchwayError("USAGE", "Invalid wallet update.");
   }
   const update: WalletUpdate = { address: input.address, chainId: input.chainId, name: input.name };
@@ -296,7 +334,11 @@ function parseWalletUpdate(value: unknown): WalletUpdate {
 
 function parseBegin(value: unknown): BeginRequest {
   const input = asRecord(value);
-  if (typeof input.payloadHash !== "string" || typeof input.address !== "string" || typeof input.chainId !== "number") {
+  if (
+    typeof input.payloadHash !== "string" ||
+    typeof input.address !== "string" ||
+    typeof input.chainId !== "number"
+  ) {
     throw new HatchwayError("USAGE", "Invalid begin request.");
   }
   return { payloadHash: input.payloadHash, address: input.address, chainId: input.chainId };
@@ -313,7 +355,11 @@ function parseResult(value: unknown): ResultRequest {
       if (typeof input.signature !== "string") break;
       return { payloadHash: input.payloadHash, outcome: "signed", signature: input.signature };
     case "rejected":
-      return { payloadHash: input.payloadHash, outcome: "rejected", ...(typeof input.message === "string" ? { message: input.message } : {}) };
+      return {
+        payloadHash: input.payloadHash,
+        outcome: "rejected",
+        ...(typeof input.message === "string" ? { message: input.message } : {}),
+      };
     case "error":
       return {
         payloadHash: input.payloadHash,

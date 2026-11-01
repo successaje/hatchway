@@ -54,14 +54,26 @@ function toRecord(request: ApprovalRequest): TransactionRecord {
  * summary reflects receipts even when the wrapped tool finished waiting for them first.
  */
 export async function settleSubmitted(bridge: Bridge, timeoutMs: number): Promise<void> {
-  const pending = bridge.session.requests.filter((r) => r.state === "submitted").map((r) => r.settled.promise);
+  const pending = bridge.session.requests
+    .filter((r) => r.state === "submitted")
+    .map((r) => r.settled.promise);
   if (pending.length === 0) return;
-  await Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, timeoutMs).unref())]);
+  await Promise.race([
+    Promise.all(pending),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs).unref()),
+  ]);
 }
 
 /** The most significant failure among the session's requests, used for the exit code. */
 export function firstFailure(bridge: Bridge): HatchwayError | undefined {
-  const priority: ErrorCode[] = ["INTEGRITY_MISMATCH", "TRANSACTION_REPLACED", "TRANSACTION_REVERTED", "USER_REJECTED", "NONCE_CONFLICT", "APPROVAL_TIMEOUT"];
+  const priority: ErrorCode[] = [
+    "INTEGRITY_MISMATCH",
+    "TRANSACTION_REPLACED",
+    "TRANSACTION_REVERTED",
+    "USER_REJECTED",
+    "NONCE_CONFLICT",
+    "APPROVAL_TIMEOUT",
+  ];
   const failed = bridge.session.requests.filter((r) => r.error);
   for (const code of priority) {
     const match = failed.find((r) => r.error?.code === code);
@@ -74,7 +86,9 @@ export function firstFailure(bridge: Bridge): HatchwayError | undefined {
 /** Prints the deployment summary: one block per deployed contract, full addresses. */
 export function printSummary(bridge: Bridge, reporter: Reporter): void {
   const chain = bridge.session.chain;
-  const deployed = bridge.session.requests.filter((r) => r.state === "confirmed" && r.result?.contractAddress);
+  const deployed = bridge.session.requests.filter(
+    (r) => r.state === "confirmed" && r.result?.contractAddress,
+  );
   const sent = bridge.session.requests.filter((r) => r.result?.hash);
   if (sent.length === 0) return;
   for (const request of deployed) {
@@ -87,7 +101,8 @@ export function printSummary(bridge: Bridge, reporter: Reporter): void {
     reporter.line();
   }
   const others = sent.length - deployed.length;
-  if (deployed.length > 0 && others > 0) reporter.note(`plus ${others} other transaction${others === 1 ? "" : "s"}`);
+  if (deployed.length > 0 && others > 0)
+    reporter.note(`plus ${others} other transaction${others === 1 ? "" : "s"}`);
   if (chain) reporter.field("Network", `${chain.name} (${chain.id})`);
   if (bridge.session.wallet) reporter.field("Deployer", bridge.session.wallet.address);
 }
@@ -118,7 +133,9 @@ export async function writeRunRecord(input: RunRecordInput): Promise<string | un
     startedAt: input.startedAt.toISOString(),
     finishedAt: new Date().toISOString(),
     chain: chain ? { id: chain.id, name: chain.name } : undefined,
-    wallet: bridge.session.wallet ? { address: bridge.session.wallet.address, name: bridge.session.wallet.name } : undefined,
+    wallet: bridge.session.wallet
+      ? { address: bridge.session.wallet.address, name: bridge.session.wallet.name }
+      : undefined,
     transactions,
     ...input.extra,
   };

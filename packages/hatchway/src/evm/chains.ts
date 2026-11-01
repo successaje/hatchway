@@ -24,7 +24,8 @@ function chainIndex(): Map<number, Chain> {
   byId = new Map();
   for (const value of Object.values(viemChains)) {
     const chain = value as Partial<Chain>;
-    if (typeof chain.id !== "number" || typeof chain.name !== "string" || !chain.nativeCurrency) continue;
+    if (typeof chain.id !== "number" || typeof chain.name !== "string" || !chain.nativeCurrency)
+      continue;
     // Keep the first definition: viem lists canonical chains before aliases sharing an id.
     if (!byId.has(chain.id)) byId.set(chain.id, chain as Chain);
   }
@@ -73,7 +74,10 @@ export function explorerAddressUrl(chainId: number, address: string): string | u
  * the wallet when it is a credential-free loopback URL; for public chains the well-known
  * public endpoint is used instead, so API keys never reach the browser.
  */
-function addChainParameter(chainId: number, upstreamUrl: string | undefined): AddChainParameter | undefined {
+function addChainParameter(
+  chainId: number,
+  upstreamUrl: string | undefined,
+): AddChainParameter | undefined {
   const chain = getChain(chainId);
   const local = isLocalChain(chainId);
   let rpcUrls: string[] = [];

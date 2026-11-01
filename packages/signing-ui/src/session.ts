@@ -55,7 +55,13 @@ export function currentSessionId(): string | undefined {
 async function post(path: string, body: unknown, token?: string): Promise<Response> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
-  return fetch(path, { method: "POST", headers, body: JSON.stringify(body), credentials: "omit", cache: "no-store" });
+  return fetch(path, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    credentials: "omit",
+    cache: "no-store",
+  });
 }
 
 async function failure(response: Response): Promise<ApiFailure> {
@@ -65,7 +71,11 @@ async function failure(response: Response): Promise<ApiFailure> {
   } catch {
     // keep defaults
   }
-  return new ApiFailure(response.status, body.error ?? "HTTP_ERROR", body.message ?? `Request failed (${response.status}).`);
+  return new ApiFailure(
+    response.status,
+    body.error ?? "HTTP_ERROR",
+    body.message ?? `Request failed (${response.status}).`,
+  );
 }
 
 /** Redeems the pairing code from the URL fragment, or reuses this tab's token. */
@@ -120,7 +130,11 @@ export class SessionApi {
    * Streams session snapshots (server-sent events over fetch, so the token can travel in a
    * header). Resolves when the stream ends; rejects with ApiFailure on auth errors.
    */
-  async stream(onSnapshot: (snapshot: SessionSnapshot) => void, onRevoked: () => void, signal: AbortSignal): Promise<void> {
+  async stream(
+    onSnapshot: (snapshot: SessionSnapshot) => void,
+    onRevoked: () => void,
+    signal: AbortSignal,
+  ): Promise<void> {
     const response = await fetch(this.#path("events"), {
       headers: { authorization: `Bearer ${this.link.token}`, accept: "text/event-stream" },
       cache: "no-store",
@@ -145,7 +159,8 @@ export class SessionApi {
           if (line.startsWith("event: ")) event = line.slice(7);
           else if (line.startsWith("data: ")) data.push(line.slice(6));
         }
-        if (event === "snapshot" && data.length) onSnapshot(JSON.parse(data.join("\n")) as SessionSnapshot);
+        if (event === "snapshot" && data.length)
+          onSnapshot(JSON.parse(data.join("\n")) as SessionSnapshot);
         if (event === "revoked") onRevoked();
       }
     }

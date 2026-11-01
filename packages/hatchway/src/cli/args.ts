@@ -17,7 +17,9 @@ export function parseOptions(
 ): { options: ParsedOptions; rest: string[] } {
   const options: ParsedOptions = {};
   const rest: string[] = [];
-  const shortToLong = new Map(Object.entries(spec).flatMap(([name, s]) => (s.short ? [[s.short, name] as const] : [])));
+  const shortToLong = new Map(
+    Object.entries(spec).flatMap(([name, s]) => (s.short ? [[s.short, name] as const] : [])),
+  );
 
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]!;
@@ -52,7 +54,9 @@ export function parseOptions(
     }
     const definition = spec[name];
     if (!definition) {
-      throw new HatchwayError("USAGE", `Unknown option --${name}`, { hint: "Run `hatchway help` to see the available options." });
+      throw new HatchwayError("USAGE", `Unknown option --${name}`, {
+        hint: "Run `hatchway help` to see the available options.",
+      });
     }
     if (definition.type === "boolean") {
       options[name] = inline === undefined ? true : inline !== "false";

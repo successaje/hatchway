@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { RequestView, SessionSnapshot } from "../../hatchway/src/core/protocol.ts";
 import { Activity } from "./components/Activity.tsx";
-import { CheckIcon, formatRemaining, Hex, LockIcon, Mark, Pill, Spinner, useNow, WalletIcon } from "./components/common.tsx";
+import {
+  CheckIcon,
+  formatRemaining,
+  Hex,
+  LockIcon,
+  Mark,
+  Pill,
+  Spinner,
+  useNow,
+  WalletIcon,
+} from "./components/common.tsx";
 import { ConnectWallet } from "./components/ConnectWallet.tsx";
 import { RequestCard } from "./components/RequestCard.tsx";
 import { ApiFailure, currentSessionId, pair, SessionApi } from "./session.ts";
-import { asProviderError, discoverWallets, readAccount, readChainId, type WalletOption } from "./wallets.ts";
+import {
+  asProviderError,
+  discoverWallets,
+  readAccount,
+  readChainId,
+  type WalletOption,
+} from "./wallets.ts";
 
 type Phase =
   | { kind: "pairing" }
@@ -36,7 +52,11 @@ export function App() {
   useEffect(() => {
     const sessionId = currentSessionId();
     if (!sessionId) {
-      setPhase({ kind: "error", title: "Link not recognised", message: "Open the link printed in your terminal." });
+      setPhase({
+        kind: "error",
+        title: "Link not recognised",
+        message: "Open the link printed in your terminal.",
+      });
       return;
     }
     const controller = new AbortController();
@@ -58,7 +78,8 @@ export function App() {
               setOffset(next.now - Date.now());
               setSnapshot(next);
               setPhase({ kind: "live" });
-              if (["completed", "cancelled", "expired", "failed"].includes(next.state)) ended = true;
+              if (["completed", "cancelled", "expired", "failed"].includes(next.state))
+                ended = true;
             },
             () => {
               ended = true;
@@ -68,7 +89,10 @@ export function App() {
           );
         } catch (error) {
           if (controller.signal.aborted) return;
-          if (error instanceof ApiFailure && (error.status === 401 || error.status === 404 || error.status === 410)) {
+          if (
+            error instanceof ApiFailure &&
+            (error.status === 401 || error.status === 404 || error.status === 410)
+          ) {
             setPhase(error.status === 401 ? { kind: "revoked" } : { kind: "lost" });
             return;
           }
@@ -93,7 +117,12 @@ export function App() {
   const report = useCallback(async (wallet: WalletOption, address: string | undefined) => {
     if (!api.current) return;
     const chainId = await readChainId(wallet.provider);
-    await api.current.reportWallet({ address: address ?? "", chainId, name: wallet.name, ...(wallet.rdns ? { rdns: wallet.rdns } : {}) });
+    await api.current.reportWallet({
+      address: address ?? "",
+      chainId,
+      name: wallet.name,
+      ...(wallet.rdns ? { rdns: wallet.rdns } : {}),
+    });
   }, []);
 
   const connect = useCallback(
@@ -117,7 +146,11 @@ export function App() {
         const e = asProviderError(error);
         if (prompt) {
           setConnectError(
-            e.code === 4001 ? "You declined the connection in your wallet." : e.code === -32002 ? `${wallet.name} already has a pending request. Open the wallet to answer it.` : `Could not connect: ${e.message}`,
+            e.code === 4001
+              ? "You declined the connection in your wallet."
+              : e.code === -32002
+                ? `${wallet.name} already has a pending request. Open the wallet to answer it.`
+                : `Could not connect: ${e.message}`,
           );
         }
       } finally {
@@ -145,7 +178,8 @@ export function App() {
     if (!active) return;
     const provider = active.provider;
     const onAccounts = (accounts: unknown) => {
-      const first = Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : undefined;
+      const first =
+        Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : undefined;
       void report(active, first).catch(() => undefined);
     };
     const onChain = () => {
@@ -177,7 +211,10 @@ export function App() {
     setActionError(undefined);
     try {
       // Re-check the live wallet state right before asking it to sign.
-      const [address, chainId] = await Promise.all([readAccount(wallet.provider, false), readChainId(wallet.provider)]);
+      const [address, chainId] = await Promise.all([
+        readAccount(wallet.provider, false),
+        readChainId(wallet.provider),
+      ]);
       if (!address || address.toLowerCase() !== s.wallet.address.toLowerCase()) {
         setActionError(`Your wallet is on a different account. Switch to ${s.wallet.address}.`);
         return;
@@ -202,7 +239,12 @@ export function App() {
           request.id,
           e.code === 4001
             ? { payloadHash: request.payloadHash, outcome: "rejected", message: e.message }
-            : { payloadHash: request.payloadHash, outcome: "error", message: e.message, ...(e.code !== undefined ? { code: e.code } : {}) },
+            : {
+                payloadHash: request.payloadHash,
+                outcome: "error",
+                message: e.message,
+                ...(e.code !== undefined ? { code: e.code } : {}),
+              },
         );
       }
     } catch (error) {
@@ -216,7 +258,11 @@ export function App() {
     if (!current || !api.current) return;
     setBusy(true);
     try {
-      await api.current.result(current.id, { payloadHash: current.payloadHash, outcome: "rejected", message: "Rejected on the review page." });
+      await api.current.result(current.id, {
+        payloadHash: current.payloadHash,
+        outcome: "rejected",
+        message: "Rejected on the review page.",
+      });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -231,23 +277,33 @@ export function App() {
     setActionError(undefined);
     const chainIdHex = `0x${chain.id.toString(16)}`;
     try {
-      await active.provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
+      await active.provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainIdHex }],
+      });
     } catch (error) {
       const e = asProviderError(error);
       if (e.code === 4902 && chain.addChain) {
         try {
-          await active.provider.request({ method: "wallet_addEthereumChain", params: [chain.addChain] });
+          await active.provider.request({
+            method: "wallet_addEthereumChain",
+            params: [chain.addChain],
+          });
         } catch (addError) {
           setActionError(`Could not add ${chain.name}: ${asProviderError(addError).message}`);
         }
       } else if (e.code === 4902) {
-        setActionError(`${chain.name} (chain ${chain.id}) is not in your wallet. Add it in the wallet's network settings.`);
+        setActionError(
+          `${chain.name} (chain ${chain.id}) is not in your wallet. Add it in the wallet's network settings.`,
+        );
       } else if (e.code !== 4001) {
         setActionError(`Could not switch network: ${e.message}`);
       }
     } finally {
       setSwitching(false);
-      void readAccount(active.provider, false).then((address) => report(active, address)).catch(() => undefined);
+      void readAccount(active.provider, false)
+        .then((address) => report(active, address))
+        .catch(() => undefined);
     }
   }, [active, snapshot?.chain, report]);
 
@@ -262,7 +318,8 @@ export function App() {
   }, []);
 
   // ---- Render --------------------------------------------------------------------------------
-  const ended = snapshot && ["completed", "cancelled", "expired", "failed"].includes(snapshot.state);
+  const ended =
+    snapshot && ["completed", "cancelled", "expired", "failed"].includes(snapshot.state);
   const walletName = snapshot?.wallet?.name ?? active?.name ?? "your wallet";
 
   return (
@@ -290,24 +347,45 @@ export function App() {
 
       <main class="main" aria-live="polite">
         {phase.kind === "pairing" ? <Loading /> : null}
-        {phase.kind === "error" ? <Message tone="bad" title={phase.title} body={phase.message} /> : null}
+        {phase.kind === "error" ? (
+          <Message tone="bad" title={phase.title} body={phase.message} />
+        ) : null}
         {phase.kind === "revoked" ? (
-          <Message tone="bad" title="Session opened elsewhere" body="This session is now controlled by another browser tab. Use that tab, or close this one." />
+          <Message
+            tone="bad"
+            title="Session opened elsewhere"
+            body="This session is now controlled by another browser tab. Use that tab, or close this one."
+          />
         ) : null}
         {phase.kind === "lost" && !ended ? (
-          <Message tone="bad" title="Lost connection to your terminal" body="The Hatchway command is no longer running. Check your terminal, then start the command again if needed." />
+          <Message
+            tone="bad"
+            title="Lost connection to your terminal"
+            body="The Hatchway command is no longer running. Check your terminal, then start the command again if needed."
+          />
         ) : null}
 
         {snapshot && (phase.kind === "live" || phase.kind === "reconnecting" || ended) ? (
           <>
             {snapshot.wallet ? (
-              <WalletBar snapshot={snapshot} icon={active?.icon} onSwitch={switchNetwork} switching={switching} />
+              <WalletBar
+                snapshot={snapshot}
+                icon={active?.icon}
+                onSwitch={switchNetwork}
+                switching={switching}
+              />
             ) : null}
 
             {ended ? (
               <Ended snapshot={snapshot} />
             ) : !snapshot.wallet ? (
-              <ConnectWallet snapshot={snapshot} wallets={wallets} connectingId={connectingId} error={connectError} onConnect={(w) => void connect(w, true)} />
+              <ConnectWallet
+                snapshot={snapshot}
+                wallets={wallets}
+                connectingId={connectingId}
+                error={connectError}
+                onConnect={(w) => void connect(w, true)}
+              />
             ) : current && current.state !== "queued" ? (
               <RequestCard
                 request={current}
@@ -338,7 +416,8 @@ export function App() {
 
       <footer class="foot">
         <p>
-          <LockIcon /> Keys stay in your wallet. This page runs locally from your terminal and loads nothing from the internet.
+          <LockIcon /> Keys stay in your wallet. This page runs locally from your terminal and loads
+          nothing from the internet.
         </p>
         {snapshot && !ended && phase.kind === "live" ? (
           <button type="button" class="link link-quiet" onClick={() => void cancelSession()}>
@@ -352,42 +431,71 @@ export function App() {
 
 function pickCurrent(snapshot: SessionSnapshot | undefined): RequestView | undefined {
   if (!snapshot) return undefined;
-  const open = snapshot.requests.filter((r) => ["review", "in_wallet", "submitted"].includes(r.state));
+  const open = snapshot.requests.filter((r) =>
+    ["review", "in_wallet", "submitted"].includes(r.state),
+  );
   if (open.length > 0) return open[open.length - 1];
   return snapshot.requests.find((r) => r.state === "queued");
 }
 
-function blockedReason(snapshot: SessionSnapshot, active: WalletOption | undefined): string | undefined {
+function blockedReason(
+  snapshot: SessionSnapshot,
+  active: WalletOption | undefined,
+): string | undefined {
   if (!active) return "Reconnect your wallet to continue.";
-  if (snapshot.walletIssue === "wrong_chain") return `Switch your wallet to ${snapshot.chain?.name ?? "the expected network"} first.`;
-  if (snapshot.walletIssue === "wrong_account") return `Switch your wallet back to ${snapshot.wallet?.address ?? "the connected account"}.`;
-  if (snapshot.walletIssue === "disconnected") return "Your wallet disconnected from this page. Reconnect it to continue.";
+  if (snapshot.walletIssue === "wrong_chain")
+    return `Switch your wallet to ${snapshot.chain?.name ?? "the expected network"} first.`;
+  if (snapshot.walletIssue === "wrong_account")
+    return `Switch your wallet back to ${snapshot.wallet?.address ?? "the connected account"}.`;
+  if (snapshot.walletIssue === "disconnected")
+    return "Your wallet disconnected from this page. Reconnect it to continue.";
   return undefined;
 }
 
 function pairingError(error: unknown): Phase {
   if (error instanceof ApiFailure) {
     if (error.code === "UNKNOWN_SESSION" || error.status === 404) {
-      return { kind: "error", title: "Session not found", message: "This session has ended or never existed. Run the command in your terminal again." };
+      return {
+        kind: "error",
+        title: "Session not found",
+        message: "This session has ended or never existed. Run the command in your terminal again.",
+      };
     }
-    if (error.code === "NO_LINK") return { kind: "error", title: "Open the link from your terminal", message: error.message };
+    if (error.code === "NO_LINK")
+      return { kind: "error", title: "Open the link from your terminal", message: error.message };
     return {
       kind: "error",
       title: "This link can't be used",
       message: `${error.message} If you opened it before, use that tab, or copy the newest link from your terminal.`,
     };
   }
-  return { kind: "error", title: "Could not reach your terminal", message: "Make sure the Hatchway command is still running." };
+  return {
+    kind: "error",
+    title: "Could not reach your terminal",
+    message: "Make sure the Hatchway command is still running.",
+  };
 }
 
-function WalletBar({ snapshot, icon, onSwitch, switching }: { snapshot: SessionSnapshot; icon: string | undefined; onSwitch: () => void; switching: boolean }) {
+function WalletBar({
+  snapshot,
+  icon,
+  onSwitch,
+  switching,
+}: {
+  snapshot: SessionSnapshot;
+  icon: string | undefined;
+  onSwitch: () => void;
+  switching: boolean;
+}) {
   const wallet = snapshot.wallet!;
   const chain = snapshot.chain;
   const issue = snapshot.walletIssue;
   return (
     <div class={`walletbar ${issue ? "has-issue" : ""}`}>
       <div class="walletbar-main">
-        <span class="wallet-icon small">{icon ? <img src={icon} alt="" width={22} height={22} /> : <WalletIcon />}</span>
+        <span class="wallet-icon small">
+          {icon ? <img src={icon} alt="" width={22} height={22} /> : <WalletIcon />}
+        </span>
         <span class="walletbar-text">
           <span class="walletbar-name">{wallet.name}</span>
           <Hex value={wallet.address} />
@@ -404,7 +512,9 @@ function WalletBar({ snapshot, icon, onSwitch, switching }: { snapshot: SessionS
       </div>
       {issue === "wrong_chain" && chain ? (
         <div class="walletbar-issue" role="alert">
-          <span>This session deploys to {chain.name} (chain {chain.id}).</span>
+          <span>
+            This session deploys to {chain.name} (chain {chain.id}).
+          </span>
           <button type="button" class="btn btn-small" onClick={onSwitch} disabled={switching}>
             {switching ? <Spinner /> : null} Switch to {chain.name}
           </button>
@@ -413,13 +523,17 @@ function WalletBar({ snapshot, icon, onSwitch, switching }: { snapshot: SessionS
       {issue === "wrong_account" ? (
         <div class="walletbar-issue" role="alert">
           <span>
-            The selected account changed. Switch back to <Hex value={wallet.address} /> in your wallet.
+            The selected account changed. Switch back to <Hex value={wallet.address} /> in your
+            wallet.
           </span>
         </div>
       ) : null}
       {issue === "disconnected" ? (
         <div class="walletbar-issue" role="alert">
-          <span>Your wallet disconnected from this page. Reconnect it from the wallet, or reload the page.</span>
+          <span>
+            Your wallet disconnected from this page. Reconnect it from the wallet, or reload the
+            page.
+          </span>
         </div>
       ) : null}
     </div>
@@ -427,7 +541,9 @@ function WalletBar({ snapshot, icon, onSwitch, switching }: { snapshot: SessionS
 }
 
 function Idle({ snapshot, preparing }: { snapshot: SessionSnapshot; preparing: boolean }) {
-  const done = snapshot.requests.filter((r) => r.state === "confirmed" || r.state === "signed").length;
+  const done = snapshot.requests.filter(
+    (r) => r.state === "confirmed" || r.state === "signed",
+  ).length;
   const queued = snapshot.requests.find((r) => r.state === "queued");
   const text =
     queued?.waitingFor === "previous_confirmation"
@@ -454,7 +570,9 @@ function Idle({ snapshot, preparing }: { snapshot: SessionSnapshot; preparing: b
 }
 
 function Ended({ snapshot }: { snapshot: SessionSnapshot }) {
-  const deployed = snapshot.requests.filter((r) => r.state === "confirmed" && r.result?.contractAddress);
+  const deployed = snapshot.requests.filter(
+    (r) => r.state === "confirmed" && r.result?.contractAddress,
+  );
   const sent = snapshot.requests.filter((r) => r.state === "confirmed" || r.state === "signed");
   if (snapshot.state === "completed") {
     return (
@@ -474,7 +592,14 @@ function Ended({ snapshot }: { snapshot: SessionSnapshot }) {
               <div class="row" key={r.id}>
                 <dt>{r.review?.contractName ?? "Contract"}</dt>
                 <dd>
-                  <Hex value={r.result!.contractAddress!} href={snapshot.chain?.explorerUrl ? `${snapshot.chain.explorerUrl}/address/${r.result!.contractAddress}` : undefined} />
+                  <Hex
+                    value={r.result!.contractAddress!}
+                    href={
+                      snapshot.chain?.explorerUrl
+                        ? `${snapshot.chain.explorerUrl}/address/${r.result!.contractAddress}`
+                        : undefined
+                    }
+                  />
                 </dd>
               </div>
             ))}
@@ -483,13 +608,26 @@ function Ended({ snapshot }: { snapshot: SessionSnapshot }) {
       </section>
     );
   }
-  const titles: Record<string, string> = { cancelled: "Session cancelled", expired: "Session expired", failed: "Session ended with an error" };
-  return <Message tone="bad" title={titles[snapshot.state] ?? "Session ended"} body={`${snapshot.endedReason ?? ""} Check your terminal for details.`.trim()} />;
+  const titles: Record<string, string> = {
+    cancelled: "Session cancelled",
+    expired: "Session expired",
+    failed: "Session ended with an error",
+  };
+  return (
+    <Message
+      tone="bad"
+      title={titles[snapshot.state] ?? "Session ended"}
+      body={`${snapshot.endedReason ?? ""} Check your terminal for details.`.trim()}
+    />
+  );
 }
 
 function Message({ tone, title, body }: { tone: "bad" | "neutral"; title: string; body: string }) {
   return (
-    <section class={`card message-card tone-${tone} enter`} role={tone === "bad" ? "alert" : "status"}>
+    <section
+      class={`card message-card tone-${tone} enter`}
+      role={tone === "bad" ? "alert" : "status"}
+    >
       <h1>{title}</h1>
       <p class="lede">{body}</p>
     </section>
@@ -505,4 +643,3 @@ function Loading() {
     </section>
   );
 }
-

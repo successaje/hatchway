@@ -26,7 +26,11 @@ const SIGNAL_NUMBERS: Record<string, number> = { SIGHUP: 1, SIGINT: 2, SIGTERM: 
  * and an inherited stdin (so interactive prompts still work). The child is always cleaned
  * up: if Hatchway exits, the tool is terminated rather than orphaned.
  */
-export function runTool(command: string, args: readonly string[], options: SpawnOptions): RunningTool {
+export function runTool(
+  command: string,
+  args: readonly string[],
+  options: SpawnOptions,
+): RunningTool {
   const child = spawn(command, args, {
     cwd: options.cwd,
     env: options.env ?? process.env,
@@ -46,7 +50,11 @@ export function runTool(command: string, args: readonly string[], options: Spawn
   const exited = new Promise<number>((resolve, reject) => {
     child.once("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") {
-        reject(new HatchwayError("TOOL_NOT_FOUND", options.notFound.message, { hint: options.notFound.hint }));
+        reject(
+          new HatchwayError("TOOL_NOT_FOUND", options.notFound.message, {
+            hint: options.notFound.hint,
+          }),
+        );
       } else {
         reject(new HatchwayError("TOOL_FAILED", `Could not start ${command}: ${error.message}`));
       }

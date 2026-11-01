@@ -23,7 +23,10 @@ interface Check {
   detail: string;
 }
 
-export async function doctorCommand(argv: string[], reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter): Promise<number> {
+export async function doctorCommand(
+  argv: string[],
+  reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter,
+): Promise<number> {
   const { options } = parseOptions(argv, {
     json: { type: "boolean" },
     debug: { type: "boolean" },
@@ -31,7 +34,11 @@ export async function doctorCommand(argv: string[], reporterFor: (json: boolean,
     help: { type: "boolean", short: "h" },
     "rpc-url": { type: "string" },
   });
-  const reporter = reporterFor(options.json === true, options.debug === true, options.color as boolean | undefined);
+  const reporter = reporterFor(
+    options.json === true,
+    options.debug === true,
+    options.color as boolean | undefined,
+  );
   if (options.help) {
     reporter.line(HELP.doctor);
     return ExitCode.Success;
@@ -48,26 +55,52 @@ export async function doctorCommand(argv: string[], reporterFor: (json: boolean,
 
   add({ name: "Hatchway", status: "ok", detail: VERSION });
   const nodeMajor = Number(process.versions.node.split(".")[0]);
-  add({ name: "Node.js", status: nodeMajor >= 22 ? "ok" : "fail", detail: `${process.versions.node}${nodeMajor >= 22 ? "" : " (22 or newer is required)"}` });
+  add({
+    name: "Node.js",
+    status: nodeMajor >= 22 ? "ok" : "fail",
+    detail: `${process.versions.node}${nodeMajor >= 22 ? "" : " (22 or newer is required)"}`,
+  });
 
   const ui = UiAssets.defaultDirectory();
-  add({ name: "Signing page", status: existsSync(join(ui, "index.html")) ? "ok" : "fail", detail: existsSync(join(ui, "index.html")) ? "bundled" : `missing at ${ui}` });
+  add({
+    name: "Signing page",
+    status: existsSync(join(ui, "index.html")) ? "ok" : "fail",
+    detail: existsSync(join(ui, "index.html")) ? "bundled" : `missing at ${ui}`,
+  });
 
   add(await loopbackCheck());
 
   const remote = detectRemoteContext();
   if (remote) {
-    add({ name: "Browser", status: "warn", detail: `running in ${remote.description}: forward the session port to open the link locally` });
+    add({
+      name: "Browser",
+      status: "warn",
+      detail: `running in ${remote.description}: forward the session port to open the link locally`,
+    });
   } else {
-    add({ name: "Browser", status: canOpenBrowser() ? "ok" : "warn", detail: canOpenBrowser() ? "can open links automatically" : "links will be printed for you to open" });
+    add({
+      name: "Browser",
+      status: canOpenBrowser() ? "ok" : "warn",
+      detail: canOpenBrowser()
+        ? "can open links automatically"
+        : "links will be printed for you to open",
+    });
   }
 
   const forge = await forgeVersion();
   if (forge) {
     const unlocked = await supportsUnlocked();
-    add({ name: "Foundry", status: unlocked ? "ok" : "warn", detail: `forge ${forge}${unlocked ? "" : " (no --unlocked support; update with foundryup)"}` });
+    add({
+      name: "Foundry",
+      status: unlocked ? "ok" : "warn",
+      detail: `forge ${forge}${unlocked ? "" : " (no --unlocked support; update with foundryup)"}`,
+    });
   } else {
-    add({ name: "Foundry", status: "warn", detail: "forge not found (needed for `hatchway forge`)" });
+    add({
+      name: "Foundry",
+      status: "warn",
+      detail: "forge not found (needed for `hatchway forge`)",
+    });
   }
 
   const foundryRoot = findFoundryRoot(process.cwd());
@@ -76,14 +109,33 @@ export async function doctorCommand(argv: string[], reporterFor: (json: boolean,
   if (hardhatConfig) {
     try {
       const project = locateHardhat(process.cwd());
-      add({ name: "Hardhat project", status: "ok", detail: `Hardhat ${project.version} at ${project.root}` });
+      add({
+        name: "Hardhat project",
+        status: "ok",
+        detail: `Hardhat ${project.version} at ${project.root}`,
+      });
       const plugin = configMentionsPlugin(project.configPath);
-      add({ name: "Hardhat plugin", status: plugin ? "ok" : "warn", detail: plugin ? "hatchway/hardhat is loaded" : 'add `import hatchway from "hatchway/hardhat"` to plugins' });
+      add({
+        name: "Hardhat plugin",
+        status: plugin ? "ok" : "warn",
+        detail: plugin
+          ? "hatchway/hardhat is loaded"
+          : 'add `import hatchway from "hatchway/hardhat"` to plugins',
+      });
     } catch (error) {
-      add({ name: "Hardhat project", status: "warn", detail: error instanceof Error ? error.message : String(error) });
+      add({
+        name: "Hardhat project",
+        status: "warn",
+        detail: error instanceof Error ? error.message : String(error),
+      });
     }
   }
-  if (!foundryRoot && !hardhatConfig) add({ name: "Project", status: "warn", detail: "no Foundry or Hardhat project in this directory" });
+  if (!foundryRoot && !hardhatConfig)
+    add({
+      name: "Project",
+      status: "warn",
+      detail: "no Foundry or Hardhat project in this directory",
+    });
 
   const rpcUrl = (options["rpc-url"] as string | undefined) ?? process.env.ETH_RPC_URL;
   if (rpcUrl) add(await rpcCheck(rpcUrl));
@@ -97,16 +149,26 @@ export async function doctorCommand(argv: string[], reporterFor: (json: boolean,
 async function loopbackCheck(): Promise<Check> {
   return new Promise((resolve) => {
     const server = createServer();
-    server.once("error", (error) => resolve({ name: "Loopback server", status: "fail", detail: `cannot listen on 127.0.0.1 (${error.message})` }));
+    server.once("error", (error) =>
+      resolve({
+        name: "Loopback server",
+        status: "fail",
+        detail: `cannot listen on 127.0.0.1 (${error.message})`,
+      }),
+    );
     server.listen(0, "127.0.0.1", () => {
-      server.close(() => resolve({ name: "Loopback server", status: "ok", detail: "can listen on 127.0.0.1" }));
+      server.close(() =>
+        resolve({ name: "Loopback server", status: "ok", detail: "can listen on 127.0.0.1" }),
+      );
     });
   });
 }
 
 async function supportsUnlocked(): Promise<boolean> {
   try {
-    const { stdout } = await execFileAsync("forge", ["script", "--help"], { maxBuffer: 4 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("forge", ["script", "--help"], {
+      maxBuffer: 4 * 1024 * 1024,
+    });
     return stdout.includes("--unlocked");
   } catch {
     return false;
@@ -118,14 +180,26 @@ async function rpcCheck(url: string): Promise<Check> {
   try {
     rpc = new UpstreamRpc(url, { timeoutMs: 8_000 });
   } catch (error) {
-    return { name: "RPC endpoint", status: "fail", detail: error instanceof Error ? error.message : String(error) };
+    return {
+      name: "RPC endpoint",
+      status: "fail",
+      detail: error instanceof Error ? error.message : String(error),
+    };
   }
   const started = Date.now();
   try {
     const chainId = await rpc.chainId();
     const block = await rpc.client.getBlockNumber();
-    return { name: "RPC endpoint", status: "ok", detail: `${rpc.display} → ${chainName(chainId)} (${chainId}), block ${block}, ${Date.now() - started} ms` };
+    return {
+      name: "RPC endpoint",
+      status: "ok",
+      detail: `${rpc.display} → ${chainName(chainId)} (${chainId}), block ${block}, ${Date.now() - started} ms`,
+    };
   } catch (error) {
-    return { name: "RPC endpoint", status: "fail", detail: error instanceof Error ? error.message : String(error) };
+    return {
+      name: "RPC endpoint",
+      status: "fail",
+      detail: error instanceof Error ? error.message : String(error),
+    };
   }
 }

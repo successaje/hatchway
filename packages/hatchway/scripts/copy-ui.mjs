@@ -7,7 +7,9 @@ const target = fileURLToPath(new URL("../dist/ui", import.meta.url));
 
 if (!existsSync(`${source}/index.html`)) {
   console.error("signing UI build not found at", source);
-  console.error("run `pnpm --filter @hatchway/signing-ui build` first (the root `pnpm build` does this)");
+  console.error(
+    "run `pnpm --filter @hatchway/signing-ui build` first (the root `pnpm build` does this)",
+  );
   process.exit(1);
 }
 

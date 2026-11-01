@@ -2,7 +2,12 @@ import { getAddress, isAddress, type Address } from "viem";
 import type { ApprovalEngine } from "../core/engine.js";
 import { HatchwayError, toHatchwayError } from "../core/errors.js";
 import { normalizeTransaction } from "../evm/tx.js";
-import { RpcResponseError, type JsonRpcRequest, type JsonRpcResponse, type UpstreamRpc } from "../evm/rpc.js";
+import {
+  RpcResponseError,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+  type UpstreamRpc,
+} from "../evm/rpc.js";
 
 export interface AttachParams {
   url: string;
@@ -19,7 +24,8 @@ export interface RpcHandlerOptions {
 }
 
 const BLOCKED: Record<string, string> = {
-  eth_sign: "eth_sign is disabled: it signs arbitrary hashes and is a common phishing vector. Use personal_sign or eth_signTypedData_v4.",
+  eth_sign:
+    "eth_sign is disabled: it signs arbitrary hashes and is a common phishing vector. Use personal_sign or eth_signTypedData_v4.",
   eth_signTransaction:
     "eth_signTransaction is not supported: browser wallets sign and broadcast in one step. Send with eth_sendTransaction (forge: --unlocked).",
   eth_sendRawTransaction:
@@ -55,7 +61,11 @@ export class RpcHandler {
   }
 
   async #handleOne(raw: unknown, signal: AbortSignal): Promise<JsonRpcResponse> {
-    if (raw === null || typeof raw !== "object" || typeof (raw as JsonRpcRequest).method !== "string") {
+    if (
+      raw === null ||
+      typeof raw !== "object" ||
+      typeof (raw as JsonRpcRequest).method !== "string"
+    ) {
       return errorResponse(null, -32600, "Invalid request");
     }
     const request = raw as JsonRpcRequest;
@@ -65,7 +75,8 @@ export class RpcHandler {
       if (result instanceof Forwarded) return result.response(id);
       return { jsonrpc: "2.0", id, result };
     } catch (error) {
-      if (error instanceof RpcResponseError) return errorResponse(id, error.code, error.message, error.data);
+      if (error instanceof RpcResponseError)
+        return errorResponse(id, error.code, error.message, error.data);
       const hatchway = toHatchwayError(error);
       return errorResponse(id, hatchway.rpcCode, hatchway.message, { hatchway: hatchway.code });
     }
@@ -76,7 +87,8 @@ export class RpcHandler {
     const session = engine.session;
     const params = Array.isArray(request.params) ? (request.params as unknown[]) : [];
 
-    if (BLOCKED[request.method]) throw new HatchwayError("UNSUPPORTED_SIGNER", BLOCKED[request.method]!);
+    if (BLOCKED[request.method])
+      throw new HatchwayError("UNSUPPORTED_SIGNER", BLOCKED[request.method]!);
 
     switch (request.method) {
       case "hatchway_attach":
@@ -98,7 +110,8 @@ export class RpcHandler {
       case "personal_sign": {
         await session.waitForWallet();
         const [message, address] = params;
-        if (typeof message !== "string") throw new HatchwayError("INVALID_TRANSACTION", "personal_sign expects a message.");
+        if (typeof message !== "string")
+          throw new HatchwayError("INVALID_TRANSACTION", "personal_sign expects a message.");
         const approval = engine.enqueueSignature("personal_sign", parseSigner(address), message);
         return awaitRequest(engine, approval, signal);
       }
@@ -107,13 +120,20 @@ export class RpcHandler {
         await session.waitForWallet();
         const [address, typed] = params;
         const payload = typeof typed === "string" ? typed : JSON.stringify(typed);
-        const approval = engine.enqueueSignature("eth_signTypedData_v4", parseSigner(address), payload);
+        const approval = engine.enqueueSignature(
+          "eth_signTypedData_v4",
+          parseSigner(address),
+          payload,
+        );
         return awaitRequest(engine, approval, signal);
       }
 
       default:
         if (request.method.startsWith("wallet_")) {
-          throw new HatchwayError("UNSUPPORTED_SIGNER", `${request.method} is not available through Hatchway; manage your wallet in the browser.`);
+          throw new HatchwayError(
+            "UNSUPPORTED_SIGNER",
+            `${request.method} is not available through Hatchway; manage your wallet in the browser.`,
+          );
         }
         return this.#forward(request);
     }
@@ -122,7 +142,10 @@ export class RpcHandler {
   async #forward(request: JsonRpcRequest): Promise<Forwarded> {
     const upstream = this.#options.upstream();
     if (!upstream) {
-      throw new HatchwayError("RPC_UNREACHABLE", "No upstream RPC endpoint is attached to this session yet.");
+      throw new HatchwayError(
+        "RPC_UNREACHABLE",
+        "No upstream RPC endpoint is attached to this session yet.",
+      );
     }
     const text = await upstream.forward(JSON.stringify({ ...request, jsonrpc: "2.0" }));
     return new Forwarded(text);
@@ -148,7 +171,12 @@ async function awaitRequest(
   signal: AbortSignal,
 ): Promise<string> {
   // A retry of a request that already finished gets the same answer, never a new prompt.
-  if (approval.result?.hash && (approval.state === "submitted" || approval.state === "confirmed" || approval.state === "reverted")) {
+  if (
+    approval.result?.hash &&
+    (approval.state === "submitted" ||
+      approval.state === "confirmed" ||
+      approval.state === "reverted")
+  ) {
     return approval.result.hash;
   }
   if (approval.isTerminal) throw approval.replayError();
@@ -170,13 +198,17 @@ function parseSigner(value: unknown): Address {
 }
 
 function parseAttach(value: unknown): AttachParams {
-  if (value === null || typeof value !== "object") throw new HatchwayError("USAGE", "hatchway_attach expects an object.");
+  if (value === null || typeof value !== "object")
+    throw new HatchwayError("USAGE", "hatchway_attach expects an object.");
   const input = value as Record<string, unknown>;
-  if (typeof input.url !== "string") throw new HatchwayError("USAGE", "hatchway_attach requires a url.");
+  if (typeof input.url !== "string")
+    throw new HatchwayError("USAGE", "hatchway_attach requires a url.");
   const params: AttachParams = { url: input.url };
   if (input.headers && typeof input.headers === "object") {
     params.headers = Object.fromEntries(
-      Object.entries(input.headers as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+      Object.entries(input.headers as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
     );
   }
   if (typeof input.chainId === "number") params.chainId = input.chainId;
@@ -184,6 +216,15 @@ function parseAttach(value: unknown): AttachParams {
   return params;
 }
 
-function errorResponse(id: JsonRpcRequest["id"], code: number, message: string, data?: unknown): JsonRpcResponse {
-  return { jsonrpc: "2.0", id, error: data === undefined ? { code, message } : { code, message, data } };
+function errorResponse(
+  id: JsonRpcRequest["id"],
+  code: number,
+  message: string,
+  data?: unknown,
+): JsonRpcResponse {
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: data === undefined ? { code, message } : { code, message, data },
+  };
 }

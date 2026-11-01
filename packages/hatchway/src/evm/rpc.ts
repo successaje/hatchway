@@ -11,7 +11,11 @@ export interface JsonRpcRequest {
 
 export type JsonRpcResponse =
   | { jsonrpc: "2.0"; id: string | number | null; result: unknown }
-  | { jsonrpc: "2.0"; id: string | number | null; error: { code: number; message: string; data?: unknown } };
+  | {
+      jsonrpc: "2.0";
+      id: string | number | null;
+      error: { code: number; message: string; data?: unknown };
+    };
 
 /** A JSON-RPC error returned by the node (as opposed to a transport failure). */
 export class RpcResponseError extends Error {
@@ -59,7 +63,10 @@ export class UpstreamRpc {
     this.#headers = options.headers ?? {};
     this.#timeoutMs = options.timeoutMs ?? 30_000;
     this.client = createPublicClient({
-      transport: custom({ request: ({ method, params }) => this.request(method, params) }, { retryCount: 0 }),
+      transport: custom(
+        { request: ({ method, params }) => this.request(method, params) },
+        { retryCount: 0 },
+      ),
     });
   }
 
@@ -74,7 +81,10 @@ export class UpstreamRpc {
     try {
       parsed = JSON.parse(text) as JsonRpcResponse;
     } catch {
-      throw new HatchwayError("RPC_ERROR", `The RPC endpoint returned a non-JSON response to ${method}.`);
+      throw new HatchwayError(
+        "RPC_ERROR",
+        `The RPC endpoint returned a non-JSON response to ${method}.`,
+      );
     }
     if ("error" in parsed && parsed.error) {
       throw new RpcResponseError(parsed.error.code, parsed.error.message, parsed.error.data);
@@ -92,22 +102,37 @@ export class UpstreamRpc {
     try {
       response = await fetch(this.url, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json", ...this.#headers },
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          ...this.#headers,
+        },
         body,
         signal: AbortSignal.timeout(this.#timeoutMs),
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      throw new HatchwayError("RPC_UNREACHABLE", `RPC endpoint could not be reached (${this.display}).`, {
-        hint: "Check the URL and that the node is running. For a local node, start `anvil` first.",
-        details: { reason: scrubSecrets(reason, this.secrets) },
-      });
+      throw new HatchwayError(
+        "RPC_UNREACHABLE",
+        `RPC endpoint could not be reached (${this.display}).`,
+        {
+          hint: "Check the URL and that the node is running. For a local node, start `anvil` first.",
+          details: { reason: scrubSecrets(reason, this.secrets) },
+        },
+      );
     }
     const text = await response.text();
     if (!response.ok && !text.trimStart().startsWith("{") && !text.trimStart().startsWith("[")) {
-      throw new HatchwayError("RPC_ERROR", `RPC endpoint responded with HTTP ${response.status} (${this.display}).`, {
-        hint: response.status === 401 || response.status === 403 ? "The endpoint rejected the credentials." : undefined,
-      });
+      throw new HatchwayError(
+        "RPC_ERROR",
+        `RPC endpoint responded with HTTP ${response.status} (${this.display}).`,
+        {
+          hint:
+            response.status === 401 || response.status === 403
+              ? "The endpoint rejected the credentials."
+              : undefined,
+        },
+      );
     }
     return text;
   }

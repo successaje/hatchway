@@ -80,11 +80,17 @@ export class Bridge {
   static async start(options: BridgeOptions): Promise<Bridge> {
     const bridge = new Bridge(options);
     if (options.upstream) {
-      bridge.#upstream = new UpstreamRpc(options.upstream.url, options.upstream.headers ? { headers: options.upstream.headers } : {});
+      bridge.#upstream = new UpstreamRpc(
+        options.upstream.url,
+        options.upstream.headers ? { headers: options.upstream.headers } : {},
+      );
       const chainId = await bridge.#upstream.chainId().catch((error: unknown) => {
         throw error instanceof HatchwayError
           ? error
-          : new HatchwayError("RPC_UNREACHABLE", `RPC endpoint could not be reached (${bridge.#upstream!.display}).`);
+          : new HatchwayError(
+              "RPC_UNREACHABLE",
+              `RPC endpoint could not be reached (${bridge.#upstream!.display}).`,
+            );
       });
       bridge.session.setChain(chainId, options.upstream.url);
     }
@@ -129,7 +135,9 @@ export class Bridge {
   }
 
   artifacts(): Promise<ArtifactIndex> {
-    this.#artifacts ??= this.#projectRoot ? ArtifactIndex.load(this.#projectRoot) : Promise.resolve(ArtifactIndex.empty());
+    this.#artifacts ??= this.#projectRoot
+      ? ArtifactIndex.load(this.#projectRoot)
+      : Promise.resolve(ArtifactIndex.empty());
     return this.#artifacts;
   }
 
@@ -147,7 +155,10 @@ export class Bridge {
     const upstream = new UpstreamRpc(params.url, params.headers ? { headers: params.headers } : {});
     const chainId = await upstream.chainId();
     if (params.chainId !== undefined && params.chainId !== chainId) {
-      throw new HatchwayError("WRONG_NETWORK", `The network reports chain ${chainId}, but Hardhat expected ${params.chainId}.`);
+      throw new HatchwayError(
+        "WRONG_NETWORK",
+        `The network reports chain ${chainId}, but Hardhat expected ${params.chainId}.`,
+      );
     }
     this.#upstream = upstream;
     this.session.setChain(chainId, params.url);
@@ -155,7 +166,10 @@ export class Bridge {
   }
 
   /** Ends the session and stops the server. Safe to call more than once; later calls wait for the first. */
-  close(state: "completed" | "cancelled" | "expired" | "failed" = "completed", reason?: string): Promise<void> {
+  close(
+    state: "completed" | "cancelled" | "expired" | "failed" = "completed",
+    reason?: string,
+  ): Promise<void> {
     this.#closing ??= (async () => {
       this.session.end(state, reason);
       // Give the page a moment to receive the final state before connections drop.

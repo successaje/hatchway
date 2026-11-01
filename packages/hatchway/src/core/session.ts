@@ -107,7 +107,12 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
 
   /** True when requests can be shown: wallet bound, network known and matching. */
   get walletReady(): boolean {
-    return !this.ended && this.wallet !== undefined && this.chain !== undefined && this.walletIssue === undefined;
+    return (
+      !this.ended &&
+      this.wallet !== undefined &&
+      this.chain !== undefined &&
+      this.walletIssue === undefined
+    );
   }
 
   // ---- Browser pairing -----------------------------------------------------------------
@@ -186,7 +191,8 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
         };
         // Once a wallet is bound, the original link can no longer be used to take over.
         this.#pairingCode = undefined;
-        if (this.state === "waiting_for_wallet" || this.state === "waiting_for_browser") this.state = "ready";
+        if (this.state === "waiting_for_wallet" || this.state === "waiting_for_browser")
+          this.state = "ready";
         this.#emit({ type: "wallet_connected", wallet: this.wallet });
       }
     } else if (this.wallet) {
@@ -257,7 +263,11 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
       const existing = this.#byDedupeKey.get(key);
       if (existing) return existing;
     }
-    const request = new ApprovalRequest(this.requests.length + 1, { kind: "transaction", tx, dedupeKey: key }, options);
+    const request = new ApprovalRequest(
+      this.requests.length + 1,
+      { kind: "transaction", tx, dedupeKey: key },
+      options,
+    );
     if (key) this.#byDedupeKey.set(key, request);
     this.requests.push(request);
     this.#emit({ type: "request_queued", request });
@@ -267,7 +277,12 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
 
   enqueueSignature(method: SignatureMethod, address: Address, payload: string): ApprovalRequest {
     this.#assertOpen();
-    const request = new ApprovalRequest(this.requests.length + 1, { kind: "signature", method, address, payload });
+    const request = new ApprovalRequest(this.requests.length + 1, {
+      kind: "signature",
+      method,
+      address,
+      payload,
+    });
     this.requests.push(request);
     this.#emit({ type: "request_queued", request });
     this.#changed();
@@ -278,7 +293,15 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
     return this.requests.find((request) => request.id === id);
   }
 
-  emitRequest(type: "request_review" | "request_in_wallet" | "request_submitted" | "request_finished" | "request_abandoned", request: ApprovalRequest): void {
+  emitRequest(
+    type:
+      | "request_review"
+      | "request_in_wallet"
+      | "request_submitted"
+      | "request_finished"
+      | "request_abandoned",
+    request: ApprovalRequest,
+  ): void {
     this.#emit({ type, request });
     this.#changed();
   }
@@ -292,13 +315,23 @@ export class Session extends EventEmitter<{ change: []; event: [SessionEvent] }>
   endError(): HatchwayError {
     switch (this.state) {
       case "expired":
-        return new HatchwayError("SESSION_EXPIRED", this.endedReason ?? "The signing session expired.", {
-          hint: "Run the command again to start a new session.",
-        });
+        return new HatchwayError(
+          "SESSION_EXPIRED",
+          this.endedReason ?? "The signing session expired.",
+          {
+            hint: "Run the command again to start a new session.",
+          },
+        );
       case "cancelled":
-        return new HatchwayError("SESSION_CANCELLED", this.endedReason ?? "The session was cancelled in the browser.");
+        return new HatchwayError(
+          "SESSION_CANCELLED",
+          this.endedReason ?? "The session was cancelled in the browser.",
+        );
       default:
-        return new HatchwayError("SESSION_CLOSED", this.endedReason ?? "The signing session has ended.");
+        return new HatchwayError(
+          "SESSION_CLOSED",
+          this.endedReason ?? "The signing session has ended.",
+        );
     }
   }
 

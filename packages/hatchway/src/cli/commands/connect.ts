@@ -18,9 +18,16 @@ const CONNECT_OPTIONS = {
  * Connects a wallet and keeps a local JSON-RPC endpoint open until Ctrl+C. Any tool that
  * sends eth_sendTransaction (cast --unlocked, Hardhat 2, scripts) can use it.
  */
-export async function connectCommand(argv: string[], reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter): Promise<number> {
+export async function connectCommand(
+  argv: string[],
+  reporterFor: (json: boolean, debug: boolean, color?: boolean) => Reporter,
+): Promise<number> {
   const { options, rest } = parseOptions(argv, CONNECT_OPTIONS);
-  const reporter = reporterFor(options.json === true, options.debug === true, options.color as boolean | undefined);
+  const reporter = reporterFor(
+    options.json === true,
+    options.debug === true,
+    options.color as boolean | undefined,
+  );
   if (options.help || rest.length > 0) {
     reporter.line(HELP.connect);
     return options.help ? ExitCode.Success : ExitCode.Usage;
@@ -32,7 +39,8 @@ export async function connectCommand(argv: string[], reporterFor: (json: boolean
     });
   }
   const from = options.from as string | undefined;
-  if (from !== undefined && !isAddress(from, { strict: false })) throw new HatchwayError("USAGE", `--from ${from} is not a valid address.`);
+  if (from !== undefined && !isAddress(from, { strict: false }))
+    throw new HatchwayError("USAGE", `--from ${from} is not a valid address.`);
 
   reporter.header("connect");
   const projectRoot = findFoundryRoot(process.cwd()) ?? findHardhatConfig(process.cwd())?.root;
@@ -57,16 +65,27 @@ export async function connectCommand(argv: string[], reporterFor: (json: boolean
     const chain = bridge.session.chain!;
     reporter.ok(reporter.c.bold("Ready."));
     reporter.line();
-    reporter.line(`  Local RPC endpoint ${reporter.c.dim("(keep it private: it can request signatures from your wallet)")}`);
+    reporter.line(
+      `  Local RPC endpoint ${reporter.c.dim("(keep it private: it can request signatures from your wallet)")}`,
+    );
     // Printed on purpose: this is the whole point of `connect`. It only lives as long as this process.
     process.stdout.write(options.json ? "" : `  ${bridge.rpcUrl}\n`);
     reporter.line();
-    reporter.note("Every transaction sent to it is shown in the browser and approved in your wallet. Examples:");
-    reporter.note(`cast send --unlocked --from ${address} --rpc-url <endpoint> <to> "fn(uint256)" 1`);
-    reporter.note(`forge script <script> --unlocked --sender ${address} --rpc-url <endpoint> --broadcast --slow`);
+    reporter.note(
+      "Every transaction sent to it is shown in the browser and approved in your wallet. Examples:",
+    );
+    reporter.note(
+      `cast send --unlocked --from ${address} --rpc-url <endpoint> <to> "fn(uint256)" 1`,
+    );
+    reporter.note(
+      `forge script <script> --unlocked --sender ${address} --rpc-url <endpoint> --broadcast --slow`,
+    );
     reporter.line();
     reporter.step("Press Ctrl+C to end the session.");
-    reporter.event({ event: "ready", rpcUrl: bridge.rpcUrl, address, chainId: chain.id }, { revealSecrets: true });
+    reporter.event(
+      { event: "ready", rpcUrl: bridge.rpcUrl, address, chainId: chain.id },
+      { revealSecrets: true },
+    );
     await bridge.session.endedPromise;
   } catch (error) {
     if (!stopped) throw error;
@@ -81,7 +100,13 @@ export async function connectCommand(argv: string[], reporterFor: (json: boolean
     await bridge.close();
     return error.exitCode;
   }
-  reporter.event({ event: "result", ok: true, exitCode: 0, transactions: transactionRecords(bridge), ...(reason ? { reason } : {}) });
+  reporter.event({
+    event: "result",
+    ok: true,
+    exitCode: 0,
+    transactions: transactionRecords(bridge),
+    ...(reason ? { reason } : {}),
+  });
   await bridge.close();
   return ExitCode.Success;
 }

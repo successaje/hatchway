@@ -51,7 +51,10 @@ export class ArtifactIndex {
   }
 
   /** Loads artifacts from the standard Foundry and Hardhat output directories under `root`. */
-  static async load(root: string, directories: string[] = ["out", "artifacts"]): Promise<ArtifactIndex> {
+  static async load(
+    root: string,
+    directories: string[] = ["out", "artifacts"],
+  ): Promise<ArtifactIndex> {
     const entries: ArtifactEntry[] = [];
     const budget = { files: 0 };
     for (const dir of directories) {
@@ -61,7 +64,9 @@ export class ArtifactIndex {
   }
 
   findByName(name: string): ArtifactEntry[] {
-    return this.entries.filter((entry) => entry.name === name || `${entry.sourcePath}:${entry.name}` === name);
+    return this.entries.filter(
+      (entry) => entry.name === name || `${entry.sourcePath}:${entry.name}` === name,
+    );
   }
 
   /** Finds the artifact whose creation bytecode prefixes `data`, preferring the longest match. */
@@ -95,7 +100,12 @@ function bytecodePrefixMatches(body: string, bytecode: string): boolean {
   return body.slice(cursor, bytecode.length) === bytecode.slice(cursor);
 }
 
-async function collect(dir: string, root: string, out: ArtifactEntry[], budget: { files: number }): Promise<void> {
+async function collect(
+  dir: string,
+  root: string,
+  out: ArtifactEntry[],
+  budget: { files: number },
+): Promise<void> {
   let names: string[];
   try {
     names = await readdir(dir);
@@ -116,7 +126,8 @@ async function collect(dir: string, root: string, out: ArtifactEntry[], budget: 
       await collect(full, root, out, budget);
       continue;
     }
-    if (!name.endsWith(".json") || name.endsWith(".dbg.json") || info.size > MAX_FILE_BYTES) continue;
+    if (!name.endsWith(".json") || name.endsWith(".dbg.json") || info.size > MAX_FILE_BYTES)
+      continue;
     budget.files += 1;
     const entry = await parseArtifact(full, root);
     if (entry) out.push(entry);
@@ -140,12 +151,12 @@ async function parseArtifact(path: string, root: string): Promise<ArtifactEntry 
   if (rawBytecode === undefined) return undefined;
   const bytecode = rawBytecode.replace(/^0x/, "").toLowerCase();
 
-  const name =
-    typeof json.contractName === "string" ? json.contractName : basename(path, ".json");
+  const name = typeof json.contractName === "string" ? json.contractName : basename(path, ".json");
   let sourcePath: string | undefined;
   if (typeof json.sourceName === "string") sourcePath = json.sourceName;
-  const target = (json.metadata as { settings?: { compilationTarget?: Record<string, string> } } | undefined)
-    ?.settings?.compilationTarget;
+  const target = (
+    json.metadata as { settings?: { compilationTarget?: Record<string, string> } } | undefined
+  )?.settings?.compilationTarget;
   if (!sourcePath && target) sourcePath = Object.keys(target)[0];
   if (!sourcePath) sourcePath = relative(root, path);
 
@@ -163,7 +174,9 @@ export function formatAbiValue(value: unknown): string {
   if (typeof value === "boolean") return String(value);
   if (Array.isArray(value)) return `[${value.map(formatAbiValue).join(", ")}]`;
   if (value !== null && typeof value === "object") {
-    const fields = Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${formatAbiValue(v)}`);
+    const fields = Object.entries(value as Record<string, unknown>).map(
+      ([k, v]) => `${k}: ${formatAbiValue(v)}`,
+    );
     return `{ ${fields.join(", ")} }`;
   }
   return String(value);

@@ -1,6 +1,5 @@
 import {
   decodeErrorResult,
-  getAddress,
   getContractAddress,
   toHex,
   type Abi,
@@ -8,8 +7,14 @@ import {
   type Hex,
 } from "viem";
 import type { DecodedArg, Notice, TransactionReview } from "../core/protocol.js";
-import { ArtifactIndex, decodeCall, decodeConstructorArgs } from "./artifacts.js";
-import { chainName, getChain, hasNonstandardDeployment, isLocalChain, nativeSymbol } from "./chains.js";
+import { decodeCall, decodeConstructorArgs, type ArtifactIndex } from "./artifacts.js";
+import {
+  chainName,
+  getChain,
+  hasNonstandardDeployment,
+  isLocalChain,
+  nativeSymbol,
+} from "./chains.js";
 import { formatAmount } from "./format.js";
 import { RpcResponseError, type UpstreamRpc } from "./rpc.js";
 import type { CanonicalTransaction } from "./tx.js";
@@ -35,14 +40,38 @@ export interface ReviewContext {
 }
 
 const SENSITIVE_FUNCTIONS: Record<string, (args: DecodedArg[]) => Notice> = {
-  approve: (args) => ({ level: "warning", message: `Grants a token allowance of ${args[1]?.value ?? "?"} to ${args[0]?.value ?? "?"}.` }),
-  increaseAllowance: (args) => ({ level: "warning", message: `Increases a token allowance for ${args[0]?.value ?? "?"}.` }),
-  setApprovalForAll: (args) => ({ level: "warning", message: `${args[1]?.value === "true" ? "Grants" : "Revokes"} operator approval for all tokens to ${args[0]?.value ?? "?"}.` }),
-  transferOwnership: (args) => ({ level: "warning", message: `Transfers contract ownership to ${args[0]?.value ?? "?"}.` }),
-  renounceOwnership: () => ({ level: "danger", message: "Renounces ownership. The contract will have no owner afterwards." }),
-  upgradeTo: (args) => ({ level: "warning", message: `Upgrades the proxy implementation to ${args[0]?.value ?? "?"}.` }),
-  upgradeToAndCall: (args) => ({ level: "warning", message: `Upgrades the proxy implementation to ${args[0]?.value ?? "?"} and calls it.` }),
-  grantRole: (args) => ({ level: "warning", message: `Grants a role to ${args[1]?.value ?? "?"}.` }),
+  approve: (args) => ({
+    level: "warning",
+    message: `Grants a token allowance of ${args[1]?.value ?? "?"} to ${args[0]?.value ?? "?"}.`,
+  }),
+  increaseAllowance: (args) => ({
+    level: "warning",
+    message: `Increases a token allowance for ${args[0]?.value ?? "?"}.`,
+  }),
+  setApprovalForAll: (args) => ({
+    level: "warning",
+    message: `${args[1]?.value === "true" ? "Grants" : "Revokes"} operator approval for all tokens to ${args[0]?.value ?? "?"}.`,
+  }),
+  transferOwnership: (args) => ({
+    level: "warning",
+    message: `Transfers contract ownership to ${args[0]?.value ?? "?"}.`,
+  }),
+  renounceOwnership: () => ({
+    level: "danger",
+    message: "Renounces ownership. The contract will have no owner afterwards.",
+  }),
+  upgradeTo: (args) => ({
+    level: "warning",
+    message: `Upgrades the proxy implementation to ${args[0]?.value ?? "?"}.`,
+  }),
+  upgradeToAndCall: (args) => ({
+    level: "warning",
+    message: `Upgrades the proxy implementation to ${args[0]?.value ?? "?"} and calls it.`,
+  }),
+  grantRole: (args) => ({
+    level: "warning",
+    message: `Grants a role to ${args[1]?.value ?? "?"}.`,
+  }),
 };
 
 const ERROR_STRING = "0x08c379a0";
@@ -81,16 +110,28 @@ export async function buildTransactionReview(
       if (args) review.constructorArgs = args;
       else notices.push({ level: "info", message: "Constructor arguments could not be decoded." });
     } else {
-      notices.push({ level: "info", message: "Bytecode does not match a compiled artifact in this project." });
+      notices.push({
+        level: "info",
+        message: "Bytecode does not match a compiled artifact in this project.",
+      });
     }
-    if (nonce !== undefined) review.predictedAddress = getContractAddress({ from: tx.from, nonce: BigInt(nonce) });
+    if (nonce !== undefined)
+      review.predictedAddress = getContractAddress({ from: tx.from, nonce: BigInt(nonce) });
     review.title = `Deploy ${review.contractName ?? "contract"}`;
-  } else if (tx.to.toLowerCase() === CREATE2_DEPLOYER.toLowerCase() && tx.data.length >= 2 + 64 + 2) {
+  } else if (
+    tx.to.toLowerCase() === CREATE2_DEPLOYER.toLowerCase() &&
+    tx.data.length >= 2 + 64 + 2
+  ) {
     review.action = "deploy_create2";
     const salt = `0x${tx.data.slice(2, 66)}` as Hex;
     const initCode = `0x${tx.data.slice(66)}` as Hex;
     review.toLabel = "Deterministic deployment proxy (CREATE2)";
-    review.predictedAddress = getContractAddress({ opcode: "CREATE2", from: CREATE2_DEPLOYER, salt, bytecode: initCode });
+    review.predictedAddress = getContractAddress({
+      opcode: "CREATE2",
+      from: CREATE2_DEPLOYER,
+      salt,
+      bytecode: initCode,
+    });
     const match = ctx.artifacts.matchCreation(initCode);
     if (match) {
       review.contractName = match.entry.name;
@@ -125,13 +166,19 @@ export async function buildTransactionReview(
             // typically a proxy forwarding to an implementation.
             review.contractName = implementation;
             review.contractSource = "selector";
-            notices.push({ level: "info", message: `Called through ${known.name}; decoded with ${implementation}'s ABI.` });
+            notices.push({
+              level: "info",
+              message: `Called through ${known.name}; decoded with ${implementation}'s ABI.`,
+            });
           } else {
             if (!known && implementation) {
               review.contractName = implementation;
               review.contractSource = "selector";
             }
-            notices.push({ level: "info", message: "Decoded by matching the function selector against project ABIs." });
+            notices.push({
+              level: "info",
+              message: "Decoded by matching the function selector against project ABIs.",
+            });
           }
           break;
         }
@@ -140,35 +187,55 @@ export async function buildTransactionReview(
     if (decoded) {
       review.functionSignature = decoded.signature;
       review.args = decoded.args;
-      review.title = review.contractName ? `${review.contractName}.${decoded.functionName}` : `Call ${decoded.functionName}`;
+      review.title = review.contractName
+        ? `${review.contractName}.${decoded.functionName}`
+        : `Call ${decoded.functionName}`;
       const sensitive = SENSITIVE_FUNCTIONS[decoded.functionName];
       if (sensitive) notices.push(sensitive(decoded.args));
     } else {
       review.title = review.contractName ? `Call ${review.contractName}` : "Contract call";
-      notices.push({ level: "info", message: "Calldata could not be decoded with the project's ABIs." });
+      notices.push({
+        level: "info",
+        message: "Calldata could not be decoded with the project's ABIs.",
+      });
     }
   }
   if (ctx.title) review.title = ctx.title;
 
   // ---- Network context: fees, simulation, balance, code ------------------------------
-  const callParams: Record<string, string> = { from: tx.from, data: tx.data, value: toHex(tx.value) };
+  const callParams: Record<string, string> = {
+    from: tx.from,
+    data: tx.data,
+    value: toHex(tx.value),
+  };
   if (tx.to) callParams.to = tx.to;
   if (tx.gas !== undefined) callParams.gas = toHex(tx.gas);
 
-  const [gasResult, blockResult, priorityResult, balanceResult, codeResult, simResult] = await Promise.allSettled([
-    tx.gas !== undefined ? Promise.resolve(tx.gas) : ctx.rpc.client.estimateGas({ account: tx.from, to: tx.to, data: tx.data, value: tx.value }),
-    ctx.rpc.client.getBlock({ blockTag: "latest" }),
-    tx.maxPriorityFeePerGas !== undefined || tx.gasPrice !== undefined
-      ? Promise.resolve(tx.maxPriorityFeePerGas ?? 0n)
-      : ctx.rpc.client.estimateMaxPriorityFeePerGas(),
-    ctx.rpc.client.getBalance({ address: tx.from }),
-    tx.to && review.action === "call" ? ctx.rpc.client.getCode({ address: tx.to }) : Promise.resolve(undefined),
-    ctx.rpc.request("eth_call", [callParams, "latest"]),
-  ]);
+  const [gasResult, blockResult, priorityResult, balanceResult, codeResult, simResult] =
+    await Promise.allSettled([
+      tx.gas !== undefined
+        ? Promise.resolve(tx.gas)
+        : ctx.rpc.client.estimateGas({
+            account: tx.from,
+            to: tx.to,
+            data: tx.data,
+            value: tx.value,
+          }),
+      ctx.rpc.client.getBlock({ blockTag: "latest" }),
+      tx.maxPriorityFeePerGas !== undefined || tx.gasPrice !== undefined
+        ? Promise.resolve(tx.maxPriorityFeePerGas ?? 0n)
+        : ctx.rpc.client.estimateMaxPriorityFeePerGas(),
+      ctx.rpc.client.getBalance({ address: tx.from }),
+      tx.to && review.action === "call"
+        ? ctx.rpc.client.getCode({ address: tx.to })
+        : Promise.resolve(undefined),
+      ctx.rpc.request("eth_call", [callParams, "latest"]),
+    ]);
 
   const gas = gasResult.status === "fulfilled" ? gasResult.value : undefined;
   if (gas !== undefined) review.gasLimit = gas.toString();
-  const baseFee = blockResult.status === "fulfilled" ? (blockResult.value.baseFeePerGas ?? undefined) : undefined;
+  const baseFee =
+    blockResult.status === "fulfilled" ? (blockResult.value.baseFeePerGas ?? undefined) : undefined;
   const priority = priorityResult.status === "fulfilled" ? priorityResult.value : undefined;
 
   if (gas !== undefined) {
@@ -200,11 +267,14 @@ export async function buildTransactionReview(
   if (simResult.status === "fulfilled") {
     review.simulation = { status: "passed" };
   } else {
-    review.simulation = { status: "failed", message: describeRevert(simResult.reason, ctx.artifacts) };
+    review.simulation = {
+      status: "failed",
+      message: describeRevert(simResult.reason, ctx.artifacts),
+    };
   }
 
-  if (codeResult.status === "fulfilled" && review.action === "call" && (codeResult.value === undefined || codeResult.value === "0x")) {
-    if (codeResult.value === "0x") notices.push({ level: "warning", message: "The destination address has no contract code." });
+  if (codeResult.status === "fulfilled" && review.action === "call" && codeResult.value === "0x") {
+    notices.push({ level: "warning", message: "The destination address has no contract code." });
   }
 
   if (balanceResult.status === "fulfilled") {
@@ -219,14 +289,24 @@ export async function buildTransactionReview(
 
   // ---- Generic warnings ----------------------------------------------------------------
   if (tx.value > 0n && review.action !== "transfer") {
-    notices.push({ level: "warning", message: `Sends ${review.valueDisplay} along with the ${review.action === "call" ? "call" : "deployment"}.` });
+    notices.push({
+      level: "warning",
+      message: `Sends ${review.valueDisplay} along with the ${review.action === "call" ? "call" : "deployment"}.`,
+    });
   }
   const chain = getChain(ctx.chainId);
   if (!isLocalChain(ctx.chainId) && chain && !chain.testnet) {
-    notices.push({ level: "warning", message: `${chainName(ctx.chainId)} is a production network. This transaction spends real funds.` });
+    notices.push({
+      level: "warning",
+      message: `${chainName(ctx.chainId)} is a production network. This transaction spends real funds.`,
+    });
   }
   if (hasNonstandardDeployment(ctx.chainId) && review.action !== "call") {
-    notices.push({ level: "warning", message: "This chain uses non-standard contract deployment; the predicted address may be wrong." });
+    notices.push({
+      level: "warning",
+      message:
+        "This chain uses non-standard contract deployment; the predicted address may be wrong.",
+    });
   }
   return review;
 }
@@ -262,10 +342,7 @@ export function describeRevert(error: unknown, artifacts: ArtifactIndex): string
 
 function extractRevertData(data: unknown): string | undefined {
   if (typeof data === "string" && data.startsWith("0x")) return data;
-  if (data && typeof data === "object" && "data" in data) return extractRevertData((data as { data: unknown }).data);
+  if (data && typeof data === "object" && "data" in data)
+    return extractRevertData((data as { data: unknown }).data);
   return undefined;
-}
-
-export function checksum(address: string): string {
-  return getAddress(address);
 }

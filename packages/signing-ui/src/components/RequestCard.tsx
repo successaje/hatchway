@@ -1,6 +1,20 @@
 import { useState } from "preact/hooks";
-import type { DecodedArg, RequestView, SessionSnapshot, TransactionReview } from "../../../hatchway/src/core/protocol.ts";
-import { CheckIcon, CrossIcon, formatRemaining, Hex, Notices, Pill, Row, Spinner } from "./common.tsx";
+import type {
+  DecodedArg,
+  RequestView,
+  SessionSnapshot,
+  TransactionReview,
+} from "../../../hatchway/src/core/protocol.ts";
+import {
+  CheckIcon,
+  CrossIcon,
+  formatRemaining,
+  Hex,
+  Notices,
+  Pill,
+  Row,
+  Spinner,
+} from "./common.tsx";
 
 interface Props {
   request: RequestView;
@@ -39,7 +53,9 @@ export function RequestCard(props: Props) {
         <StateBadge request={request} />
       </div>
       <h1 id={`request-${request.id}`}>{title}</h1>
-      {request.review ? <TransactionDetails review={request.review} request={request} snapshot={snapshot} /> : null}
+      {request.review ? (
+        <TransactionDetails review={request.review} request={request} snapshot={snapshot} />
+      ) : null}
       {request.signatureReview ? <SignatureDetails request={request} /> : null}
       <Footer {...props} />
     </section>
@@ -67,25 +83,43 @@ function StateBadge({ request }: { request: RequestView }) {
   }
 }
 
-function TransactionDetails({ review, request, snapshot }: { review: TransactionReview; request: RequestView; snapshot: SessionSnapshot }) {
+function TransactionDetails({
+  review,
+  request,
+  snapshot,
+}: {
+  review: TransactionReview;
+  request: RequestView;
+  snapshot: SessionSnapshot;
+}) {
   const [showData, setShowData] = useState(false);
   const explorer = snapshot.chain?.explorerUrl;
   const sim = review.simulation;
-  const wallet = request.wallet.method === "eth_sendTransaction" ? request.wallet.params[0] : undefined;
+  const wallet =
+    request.wallet.method === "eth_sendTransaction" ? request.wallet.params[0] : undefined;
   return (
     <>
       <p class="subtitle">
         {ACTION_LABEL[review.action]}
-        {review.contractName && review.contractSource === "artifact" && review.sourcePath ? <span class="dim"> · {review.sourcePath}</span> : null}
+        {review.contractName && review.contractSource === "artifact" && review.sourcePath ? (
+          <span class="dim"> · {review.sourcePath}</span>
+        ) : null}
       </p>
 
       <div class="chips">
         <span class={`chip chip-sim-${sim.status}`} title={sim.message ?? ""}>
           {sim.status === "passed" ? <CheckIcon /> : sim.status === "failed" ? <CrossIcon /> : null}
-          {sim.status === "passed" ? "Simulation passed" : sim.status === "failed" ? "Simulation failed" : "Simulation unavailable"}
+          {sim.status === "passed"
+            ? "Simulation passed"
+            : sim.status === "failed"
+              ? "Simulation failed"
+              : "Simulation unavailable"}
         </span>
         {review.fee ? (
-          <span class="chip" title={review.fee.maxDisplay ? `Maximum ${review.fee.maxDisplay}` : ""}>
+          <span
+            class="chip"
+            title={review.fee.maxDisplay ? `Maximum ${review.fee.maxDisplay}` : ""}
+          >
             Est. fee <strong>{review.fee.estimatedDisplay}</strong>
           </span>
         ) : null}
@@ -114,7 +148,10 @@ function TransactionDetails({ review, request, snapshot }: { review: Transaction
         {review.to ? (
           <Row label={review.action === "deploy_create2" ? "Via" : "To"}>
             <span class="stack">
-              <Hex value={review.to} href={explorer ? `${explorer}/address/${review.to}` : undefined} />
+              <Hex
+                value={review.to}
+                href={explorer ? `${explorer}/address/${review.to}` : undefined}
+              />
               {review.toLabel ? <span class="dim small">{review.toLabel}</span> : null}
             </span>
           </Row>
@@ -140,14 +177,23 @@ function TransactionDetails({ review, request, snapshot }: { review: Transaction
           </Row>
         ) : null}
         {review.fee?.maxDisplay ? <Row label="Max fee">{review.fee.maxDisplay}</Row> : null}
-        {review.gasLimit ? <Row label="Gas limit">{Number(review.gasLimit).toLocaleString("en-US")}</Row> : null}
+        {review.gasLimit ? (
+          <Row label="Gas limit">{Number(review.gasLimit).toLocaleString("en-US")}</Row>
+        ) : null}
         {review.nonce !== undefined ? <Row label="Nonce">{review.nonce}</Row> : null}
-        <Row label="Chain ID">{wallet ? Number.parseInt(wallet.chainId, 16) : snapshot.chain?.id}</Row>
+        <Row label="Chain ID">
+          {wallet ? Number.parseInt(wallet.chainId, 16) : snapshot.chain?.id}
+        </Row>
         <Row label="Data">
           <span class="stack">
             <span>
               {review.dataSize.toLocaleString("en-US")} bytes{" "}
-              <button type="button" class="link" onClick={() => setShowData(!showData)} aria-expanded={showData}>
+              <button
+                type="button"
+                class="link"
+                onClick={() => setShowData(!showData)}
+                aria-expanded={showData}
+              >
                 {showData ? "Hide" : "Show"}
               </button>
             </span>
@@ -199,7 +245,17 @@ function SignatureDetails({ request }: { request: RequestView }) {
   );
 }
 
-function Footer({ request, snapshot, now, walletName, busy, error, initiatedHere, blocked, onApprove, onReject }: Props) {
+function Footer({
+  request,
+  now,
+  walletName,
+  busy,
+  error,
+  initiatedHere,
+  blocked,
+  onApprove,
+  onReject,
+}: Props) {
   if (request.state === "review") {
     const remaining = request.deadline ? request.deadline - now : undefined;
     return (
@@ -215,7 +271,12 @@ function Footer({ request, snapshot, now, walletName, busy, error, initiatedHere
           </p>
         ) : null}
         <div class="actions">
-          <button type="button" class="btn btn-primary" onClick={onApprove} disabled={busy || blocked !== undefined}>
+          <button
+            type="button"
+            class="btn btn-primary"
+            onClick={onApprove}
+            disabled={busy || blocked !== undefined}
+          >
             {busy ? <Spinner /> : null}
             {request.kind === "signature" ? `Sign in ${walletName}` : `Confirm in ${walletName}`}
           </button>
@@ -225,7 +286,9 @@ function Footer({ request, snapshot, now, walletName, busy, error, initiatedHere
         </div>
         <p class="fineprint">
           Your wallet shows the final transaction and is the only place it can be signed.
-          {remaining !== undefined && remaining > 0 ? <> Expires in {formatRemaining(remaining)}.</> : null}
+          {remaining !== undefined && remaining > 0 ? (
+            <> Expires in {formatRemaining(remaining)}.</>
+          ) : null}
         </p>
       </div>
     );
@@ -241,8 +304,8 @@ function Footer({ request, snapshot, now, walletName, busy, error, initiatedHere
           ) : (
             <>
               <p>
-                This request was sent to your wallet before the page reloaded. Answer it there; if you approve it, Hatchway picks up
-                the transaction from the chain.
+                This request was sent to your wallet before the page reloaded. Answer it there; if
+                you approve it, Hatchway picks up the transaction from the chain.
               </p>
               <button type="button" class="btn btn-ghost btn-small" onClick={onReject}>
                 I rejected it — withdraw request

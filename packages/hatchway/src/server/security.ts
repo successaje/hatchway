@@ -65,7 +65,8 @@ export function htmlHeaders(): Record<string, string> {
     "content-type": "text/html; charset=utf-8",
     "content-security-policy": CONTENT_SECURITY_POLICY,
     "cross-origin-opener-policy": "same-origin",
-    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=()",
+    "permissions-policy":
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=()",
   };
 }
 

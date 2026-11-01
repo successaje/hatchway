@@ -3,8 +3,12 @@ import { fileURLToPath } from "node:url";
 
 export const BIN = fileURLToPath(new URL("../../dist/bin.js", import.meta.url));
 export const REPO_ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
-export const FOUNDRY_EXAMPLE = fileURLToPath(new URL("../../../../examples/foundry", import.meta.url));
-export const HARDHAT_EXAMPLE = fileURLToPath(new URL("../../../../examples/hardhat-basic", import.meta.url));
+export const FOUNDRY_EXAMPLE = fileURLToPath(
+  new URL("../../../../examples/foundry", import.meta.url),
+);
+export const HARDHAT_EXAMPLE = fileURLToPath(
+  new URL("../../../../examples/hardhat-basic", import.meta.url),
+);
 
 export type CliEvent = { event: string } & Record<string, unknown>;
 
@@ -16,7 +20,11 @@ export interface CliRun {
   sessionUrl: Promise<string>;
   exited: Promise<number>;
   result: () => CliEvent | undefined;
-  waitForEvent: (name: string, predicate?: (e: CliEvent) => boolean, timeoutMs?: number) => Promise<CliEvent>;
+  waitForEvent: (
+    name: string,
+    predicate?: (e: CliEvent) => boolean,
+    timeoutMs?: number,
+  ) => Promise<CliEvent>;
 }
 
 /** Runs the built CLI in --json mode and collects its NDJSON events. */
@@ -54,7 +62,9 @@ export function runCli(args: string[], options: { cwd: string; env?: NodeJS.Proc
   child.stderr!.on("data", (chunk: Buffer) => {
     stderr += chunk.toString();
   });
-  const exited = new Promise<number>((resolve) => child.once("close", (code) => resolve(code ?? -1)));
+  const exited = new Promise<number>((resolve) =>
+    child.once("close", (code) => resolve(code ?? -1)),
+  );
 
   return {
     child,

@@ -50,7 +50,10 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
       aria-label={copied ? "Copied" : `${label}: ${value}`}
       title={copied ? "Copied" : label}
       onClick={() => {
-        void navigator.clipboard?.writeText(value).then(() => setCopied(true), () => undefined);
+        void navigator.clipboard?.writeText(value).then(
+          () => setCopied(true),
+          () => undefined,
+        );
       }}
     >
       {copied ? <CheckIcon /> : <CopyIcon />}
@@ -59,17 +62,40 @@ export function CopyButton({ value, label = "Copy" }: { value: string; label?: s
 }
 
 /** Address or hash that shows a short form and reveals the full value on demand. */
-export function Hex({ value, lead = 6, tail = 4, href }: { value: string; lead?: number; tail?: number; href?: string | undefined }) {
+export function Hex({
+  value,
+  lead = 6,
+  tail = 4,
+  href,
+}: {
+  value: string;
+  lead?: number;
+  tail?: number;
+  href?: string | undefined;
+}) {
   const [full, setFull] = useState(false);
   const text = full ? value : shortHex(value, lead, tail);
   return (
     <span class="hex">
-      <button type="button" class="hex-toggle mono" onClick={() => setFull(!full)} aria-label={full ? "Show short form" : `Show full value ${value}`} title={value}>
+      <button
+        type="button"
+        class="hex-toggle mono"
+        onClick={() => setFull(!full)}
+        aria-label={full ? "Show short form" : `Show full value ${value}`}
+        title={value}
+      >
         {text}
       </button>
       <CopyButton value={value} />
       {href ? (
-        <a class="ext" href={href} target="_blank" rel="noreferrer noopener" aria-label="Open in block explorer" title="Open in block explorer">
+        <a
+          class="ext"
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="Open in block explorer"
+          title="Open in block explorer"
+        >
           <ExternalIcon />
         </a>
       ) : null}
@@ -89,7 +115,13 @@ export function Notices({ notices }: { notices: Notice[] }) {
             {notice.level === "info" ? <InfoIcon /> : <AlertIcon />}
           </span>
           <span>
-            <span class="sr-only">{notice.level === "info" ? "Note: " : notice.level === "warning" ? "Warning: " : "Danger: "}</span>
+            <span class="sr-only">
+              {notice.level === "info"
+                ? "Note: "
+                : notice.level === "warning"
+                  ? "Warning: "
+                  : "Danger: "}
+            </span>
             {notice.message}
           </span>
         </li>
@@ -107,7 +139,13 @@ export function Row({ label, children }: { label: string; children: ComponentChi
   );
 }
 
-export function Pill({ tone, children }: { tone: "neutral" | "good" | "warn" | "bad" | "live"; children: ComponentChildren }) {
+export function Pill({
+  tone,
+  children,
+}: {
+  tone: "neutral" | "good" | "warn" | "bad" | "live";
+  children: ComponentChildren;
+}) {
   return <span class={`pill pill-${tone}`}>{children}</span>;
 }
 
@@ -115,7 +153,17 @@ export function Spinner() {
   return <span class="spinner" aria-hidden="true" />;
 }
 
-const svgProps = { width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" } as const;
+const svgProps = {
+  width: 14,
+  height: 14,
+  viewBox: "0 0 16 16",
+  fill: "none",
+  stroke: "currentColor",
+  "stroke-width": 1.6,
+  "stroke-linecap": "round",
+  "stroke-linejoin": "round",
+  "aria-hidden": "true",
+} as const;
 
 export const CopyIcon = () => (
   <svg {...svgProps}>

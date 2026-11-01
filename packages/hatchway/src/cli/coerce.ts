@@ -9,8 +9,10 @@ export function coerceArg(param: AbiParameter, raw: unknown): unknown {
   const arrayMatch = /^(.*)\[(\d*)\]$/.exec(type);
   if (arrayMatch) {
     const items = typeof raw === "string" ? parseJson(raw, label) : raw;
-    if (!Array.isArray(items)) throw usage(`Argument ${label} must be a JSON array, e.g. '[1,2,3]'.`);
-    if (arrayMatch[2] && items.length !== Number(arrayMatch[2])) throw usage(`Argument ${label} needs exactly ${arrayMatch[2]} items.`);
+    if (!Array.isArray(items))
+      throw usage(`Argument ${label} must be a JSON array, e.g. '[1,2,3]'.`);
+    if (arrayMatch[2] && items.length !== Number(arrayMatch[2]))
+      throw usage(`Argument ${label} needs exactly ${arrayMatch[2]} items.`);
     const inner = { ...param, type: arrayMatch[1]! } as AbiParameter;
     return items.map((item) => coerceArg(inner, item));
   }
@@ -19,7 +21,12 @@ export function coerceArg(param: AbiParameter, raw: unknown): unknown {
     const value = typeof raw === "string" ? parseJson(raw, label) : raw;
     if (Array.isArray(value)) return components.map((c, i) => coerceArg(c, value[i]));
     if (value && typeof value === "object") {
-      return Object.fromEntries(components.map((c) => [c.name, coerceArg(c, (value as Record<string, unknown>)[c.name ?? ""])]));
+      return Object.fromEntries(
+        components.map((c) => [
+          c.name,
+          coerceArg(c, (value as Record<string, unknown>)[c.name ?? ""]),
+        ]),
+      );
     }
     throw usage(`Argument ${label} must be a JSON array or object.`);
   }
@@ -33,7 +40,8 @@ export function coerceArg(param: AbiParameter, raw: unknown): unknown {
     }
   }
   if (type === "address") {
-    if (!isAddress(text, { strict: false })) throw usage(`Argument ${label} must be an address, got ${text}.`);
+    if (!isAddress(text, { strict: false }))
+      throw usage(`Argument ${label} must be an address, got ${text}.`);
     return getAddress(text);
   }
   if (type === "bool") {
@@ -64,7 +72,8 @@ function usage(message: string): HatchwayError {
 /** Parses "0.1ether", "20gwei", "1 ether" or a plain wei integer. */
 export function parseValue(input: string): bigint {
   const match = /^\s*(\d+(?:\.\d+)?)\s*(ether|eth|gwei|wei)?\s*$/i.exec(input);
-  if (!match) throw usage(`Cannot parse value "${input}". Use e.g. 0.1ether, 20gwei or a wei amount.`);
+  if (!match)
+    throw usage(`Cannot parse value "${input}". Use e.g. 0.1ether, 20gwei or a wei amount.`);
   const amount = match[1]!;
   const unit = (match[2] ?? "wei").toLowerCase();
   if (unit === "ether" || unit === "eth") return parseEther(amount);

@@ -57,7 +57,8 @@ export class HeadlessWallet {
 
   static async open(options: HeadlessWalletOptions): Promise<HeadlessWallet> {
     const wallet = new HeadlessWallet(options);
-    wallet.#chainId = options.chainId ?? Number(BigInt(await rpc<string>(options.nodeUrl, "eth_chainId")));
+    wallet.#chainId =
+      options.chainId ?? Number(BigInt(await rpc<string>(options.nodeUrl, "eth_chainId")));
     await wallet.#claim();
     void wallet.#stream();
     if (!options.manualConnect) await wallet.report();
@@ -75,14 +76,27 @@ export class HeadlessWallet {
   }
 
   post(path: string, body: unknown, auth = true): Promise<Response> {
-    const headers: Record<string, string> = { "content-type": "application/json", origin: this.origin };
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      origin: this.origin,
+    };
     if (auth) headers.authorization = `Bearer ${this.token}`;
-    return fetch(`${this.origin}/api/s/${this.sessionId}/${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+    return fetch(`${this.origin}/api/s/${this.sessionId}/${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
   }
 
   async report(): Promise<void> {
-    const response = await this.post("wallet", { address: this.#address, chainId: this.#chainId, name: this.#options.name ?? "Headless Wallet", rdns: "dev.hatchway.headless" });
-    if (!response.ok) throw new Error(`wallet update failed: ${response.status} ${await response.text()}`);
+    const response = await this.post("wallet", {
+      address: this.#address,
+      chainId: this.#chainId,
+      name: this.#options.name ?? "Headless Wallet",
+      rdns: "dev.hatchway.headless",
+    });
+    if (!response.ok)
+      throw new Error(`wallet update failed: ${response.status} ${await response.text()}`);
   }
 
   async switchChain(chainId: number): Promise<void> {
@@ -129,7 +143,9 @@ export class HeadlessWallet {
       if (request.state !== "review" || this.handled.has(request.id)) continue;
       if (snapshot.walletIssue) continue;
       this.handled.add(request.id);
-      void this.#handle(request).catch((error: unknown) => this.log.push(`handle error: ${String(error)}`));
+      void this.#handle(request).catch((error: unknown) =>
+        this.log.push(`handle error: ${String(error)}`),
+      );
     }
   }
 
@@ -137,19 +153,33 @@ export class HeadlessWallet {
     const decision = this.#options.decide?.(request) ?? { action: "approve" };
     this.log.push(`${request.index}:${decision.action}`);
     if (decision.action === "ignore") return;
-    if ("delayMs" in decision && decision.delayMs) await new Promise((r) => setTimeout(r, decision.delayMs));
-    const begin = await this.post(`requests/${request.id}/begin`, { payloadHash: request.payloadHash, address: this.#address, chainId: this.#chainId });
+    if ("delayMs" in decision && decision.delayMs)
+      await new Promise((r) => setTimeout(r, decision.delayMs));
+    const begin = await this.post(`requests/${request.id}/begin`, {
+      payloadHash: request.payloadHash,
+      address: this.#address,
+      chainId: this.#chainId,
+    });
     if (!begin.ok) {
       this.log.push(`begin rejected: ${begin.status} ${await begin.text()}`);
       this.handled.delete(request.id);
       return;
     }
     if (decision.action === "reject") {
-      await this.post(`requests/${request.id}/result`, { payloadHash: request.payloadHash, outcome: "rejected", message: "User rejected the request." });
+      await this.post(`requests/${request.id}/result`, {
+        payloadHash: request.payloadHash,
+        outcome: "rejected",
+        message: "User rejected the request.",
+      });
       return;
     }
     if (decision.action === "error") {
-      await this.post(`requests/${request.id}/result`, { payloadHash: request.payloadHash, outcome: "error", code: decision.code ?? -32603, message: decision.message ?? "Internal wallet error" });
+      await this.post(`requests/${request.id}/result`, {
+        payloadHash: request.payloadHash,
+        outcome: "error",
+        code: decision.code ?? -32603,
+        message: decision.message ?? "Internal wallet error",
+      });
       return;
     }
     if (decision.action === "approve" && decision.before) await decision.before();
@@ -164,22 +194,41 @@ export class HeadlessWallet {
         hash = await rpc<string>(this.#options.nodeUrl, "eth_sendTransaction", [tx]);
       } catch (error) {
         const e = error as { code?: number; message: string };
-        await this.post(`requests/${request.id}/result`, { payloadHash: request.payloadHash, outcome: "error", code: e.code ?? -32603, message: e.message });
+        await this.post(`requests/${request.id}/result`, {
+          payloadHash: request.payloadHash,
+          outcome: "error",
+          code: e.code ?? -32603,
+          message: e.message,
+        });
         return;
       }
-      await this.post(`requests/${request.id}/result`, { payloadHash: request.payloadHash, outcome: "submitted", hash });
+      await this.post(`requests/${request.id}/result`, {
+        payloadHash: request.payloadHash,
+        outcome: "submitted",
+        hash,
+      });
     } else {
       const signature = await rpc<string>(this.#options.nodeUrl, payload.method, payload.params);
-      await this.post(`requests/${request.id}/result`, { payloadHash: request.payloadHash, outcome: "signed", signature });
+      await this.post(`requests/${request.id}/result`, {
+        payloadHash: request.payloadHash,
+        outcome: "signed",
+        signature,
+      });
     }
   }
 
-  async waitFor(predicate: (snapshot: SessionSnapshot) => boolean, timeoutMs = 20_000): Promise<SessionSnapshot> {
+  async waitFor(
+    predicate: (snapshot: SessionSnapshot) => boolean,
+    timeoutMs = 20_000,
+  ): Promise<SessionSnapshot> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       if (this.snapshot && predicate(this.snapshot)) return this.snapshot;
       const remaining = deadline - Date.now();
-      if (remaining <= 0) throw new Error(`timed out waiting; last state: ${JSON.stringify(this.snapshot?.requests.map((r) => r.state))} ${this.snapshot?.state}`);
+      if (remaining <= 0)
+        throw new Error(
+          `timed out waiting; last state: ${JSON.stringify(this.snapshot?.requests.map((r) => r.state))} ${this.snapshot?.state}`,
+        );
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, Math.min(remaining, 250));
         this.#waiters.push(() => {

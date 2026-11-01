@@ -33,7 +33,9 @@ export class Reporter {
     const isTty = (human as { isTTY?: boolean }).isTTY === true;
     const env = process.env;
     const noColor = env.NO_COLOR !== undefined && env.NO_COLOR !== "";
-    const enabled = options.color ?? (!noColor && (env.FORCE_COLOR !== undefined || (isTty && env.TERM !== "dumb")));
+    const enabled =
+      options.color ??
+      (!noColor && (env.FORCE_COLOR !== undefined || (isTty && env.TERM !== "dumb")));
     this.c = createColors(enabled);
   }
 
@@ -107,6 +109,11 @@ export class Reporter {
     } else if (error.code === "INTERNAL") {
       this.line(this.c.dim("    Run again with --debug for details."));
     }
-    this.event({ event: "error", code: error.code, message: error.message, ...(error.hint ? { hint: error.hint } : {}) });
+    this.event({
+      event: "error",
+      code: error.code,
+      message: error.message,
+      ...(error.hint ? { hint: error.hint } : {}),
+    });
   }
 }

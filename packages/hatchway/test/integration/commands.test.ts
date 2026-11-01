@@ -19,30 +19,55 @@ afterAll(async () => {
 });
 
 async function deploy(args: string[], walletOptions: Partial<HeadlessWalletOptions> = {}) {
-  const run = runCli(["deploy", "--json", "--no-open", "--no-build", "--rpc-url", anvil.url, ...args], { cwd: FOUNDRY_EXAMPLE });
+  const run = runCli(
+    ["deploy", "--json", "--no-open", "--no-build", "--rpc-url", anvil.url, ...args],
+    { cwd: FOUNDRY_EXAMPLE },
+  );
   const url = await Promise.race([run.sessionUrl, run.exited.then(() => undefined)]);
-  const wallet = url ? await HeadlessWallet.open({ sessionUrl: url, nodeUrl: anvil.url, address: deployer, ...walletOptions }) : undefined;
+  const wallet = url
+    ? await HeadlessWallet.open({
+        sessionUrl: url,
+        nodeUrl: anvil.url,
+        address: deployer,
+        ...walletOptions,
+      })
+    : undefined;
   const code = await run.exited;
   wallet?.close();
   return { code, result: run.result()!, stderr: run.stderr() };
 }
 
-const txs = (result: CliEvent) => result.transactions as { state: string; contractAddress?: string; hash?: string }[];
+const txs = (result: CliEvent) =>
+  result.transactions as { state: string; contractAddress?: string; hash?: string }[];
 
 describe("hatchway deploy", () => {
   it("deploys a compiled contract with typed constructor arguments", async () => {
     const run = await deploy(["HatchToken", "--args", "Hatch Token", "HATCH", "5000"]);
     expect(run.code, run.stderr).toBe(0);
     const token = txs(run.result)[0]!.contractAddress as Address;
-    const abi = parseAbi(["function name() view returns (string)", "function totalSupply() view returns (uint256)"]);
-    expect(await anvil.client.readContract({ address: token, abi, functionName: "name" })).toBe("Hatch Token");
-    expect(await anvil.client.readContract({ address: token, abi, functionName: "totalSupply" })).toBe(5000n);
+    const abi = parseAbi([
+      "function name() view returns (string)",
+      "function totalSupply() view returns (uint256)",
+    ]);
+    expect(await anvil.client.readContract({ address: token, abi, functionName: "name" })).toBe(
+      "Hatch Token",
+    );
+    expect(
+      await anvil.client.readContract({ address: token, abi, functionName: "totalSupply" }),
+    ).toBe(5000n);
   });
 
   it("sends native value with the deployment", async () => {
     const box = await deploy(["BoxV1"]);
     const implementation = txs(box.result)[0]!.contractAddress!;
-    const run = await deploy(["ERC1967Proxy", "--value", "0.25ether", "--args", implementation, "0x"]);
+    const run = await deploy([
+      "ERC1967Proxy",
+      "--value",
+      "0.25ether",
+      "--args",
+      implementation,
+      "0x",
+    ]);
     expect(run.code, run.stderr).toBe(0);
     const proxy = txs(run.result)[0]!.contractAddress as Address;
     expect(await anvil.client.getBalance({ address: proxy })).toBe(parseEther("0.25"));
@@ -61,25 +86,54 @@ describe("hatchway deploy", () => {
     expect(unknown.result.error).toMatchObject({ code: "ARTIFACT_NOT_FOUND" });
     const wrongArgs = await deploy(["HatchToken", "--args", "only-one"]);
     expect(wrongArgs.code).toBe(2);
-    expect(String((wrongArgs.result.error as { message: string }).message)).toContain("takes 3 constructor argument");
+    expect(String((wrongArgs.result.error as { message: string }).message)).toContain(
+      "takes 3 constructor argument",
+    );
   });
 
   it("requires --from to match the connected wallet", async () => {
-    const run = runCli(["deploy", "--json", "--no-open", "--no-build", "--rpc-url", anvil.url, "--from", ANVIL_ACCOUNTS[1], "--session-timeout", "1m", "Counter"], { cwd: FOUNDRY_EXAMPLE });
-    const wallet = await HeadlessWallet.open({ sessionUrl: await run.sessionUrl, nodeUrl: anvil.url, address: deployer });
+    const run = runCli(
+      [
+        "deploy",
+        "--json",
+        "--no-open",
+        "--no-build",
+        "--rpc-url",
+        anvil.url,
+        "--from",
+        ANVIL_ACCOUNTS[1],
+        "--session-timeout",
+        "1m",
+        "Counter",
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: deployer,
+    });
     await run.waitForEvent("wallet_issue", (e) => e.issue === "wrong_account");
     await wallet.switchAccount(ANVIL_ACCOUNTS[1]);
     expect(await run.exited).toBe(0);
     wallet.close();
-    const receipt = await anvil.client.getTransactionReceipt({ hash: txs(run.result()!)[0]!.hash as `0x${string}` });
+    const receipt = await anvil.client.getTransactionReceipt({
+      hash: txs(run.result()!)[0]!.hash as `0x${string}`,
+    });
     expect(receipt.from.toLowerCase()).toBe(ANVIL_ACCOUNTS[1].toLowerCase());
   });
 });
 
 describe("hatchway connect", () => {
   it("serves a wallet-backed RPC endpoint for other tools until interrupted", async () => {
-    const run = runCli(["connect", "--json", "--no-open", "--rpc-url", anvil.url], { cwd: FOUNDRY_EXAMPLE });
-    const wallet = await HeadlessWallet.open({ sessionUrl: await run.sessionUrl, nodeUrl: anvil.url, address: deployer });
+    const run = runCli(["connect", "--json", "--no-open", "--rpc-url", anvil.url], {
+      cwd: FOUNDRY_EXAMPLE,
+    });
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: deployer,
+    });
     const ready = await run.waitForEvent("ready");
     const endpoint = ready.rpcUrl as string;
     expect(endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/rpc\//);
@@ -91,7 +145,22 @@ describe("hatchway connect", () => {
 
     // forge's cast, unlocked against the endpoint.
     // Async: the headless wallet answering the approval runs in this same process.
-    const { stdout } = await promisify(execFile)("cast", ["send", "--unlocked", "--from", deployer, "--rpc-url", endpoint, ANVIL_ACCOUNTS[2], "--value", "7", "--async"], { encoding: "utf8" });
+    const { stdout } = await promisify(execFile)(
+      "cast",
+      [
+        "send",
+        "--unlocked",
+        "--from",
+        deployer,
+        "--rpc-url",
+        endpoint,
+        ANVIL_ACCOUNTS[2],
+        "--value",
+        "7",
+        "--async",
+      ],
+      { encoding: "utf8" },
+    );
     const castHash = stdout.trim();
     expect(castHash).toMatch(/^0x[0-9a-f]{64}$/);
 
@@ -104,8 +173,14 @@ describe("hatchway connect", () => {
 
 describe("hatchway doctor and chains", () => {
   it("doctor reports checks as JSON", () => {
-    const out = execFileSync(process.execPath, [BIN, "doctor", "--json", "--rpc-url", anvil.url], { cwd: FOUNDRY_EXAMPLE, encoding: "utf8" });
-    const result = JSON.parse(out.trim().split("\n").pop()!) as { ok: boolean; checks: { name: string; status: string }[] };
+    const out = execFileSync(process.execPath, [BIN, "doctor", "--json", "--rpc-url", anvil.url], {
+      cwd: FOUNDRY_EXAMPLE,
+      encoding: "utf8",
+    });
+    const result = JSON.parse(out.trim().split("\n").pop()!) as {
+      ok: boolean;
+      checks: { name: string; status: string }[];
+    };
     expect(result.ok).toBe(true);
     expect(result.checks.find((c) => c.name === "RPC endpoint")?.status).toBe("ok");
     expect(result.checks.find((c) => c.name === "Foundry")?.status).toBe("ok");

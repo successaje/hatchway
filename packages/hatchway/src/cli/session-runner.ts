@@ -23,7 +23,10 @@ export function sessionTimeoutMs(options: ParsedOptions): number {
   if (typeof raw !== "string") return DEFAULTS.ttlMs;
   const ms = parseDuration(raw);
   if (ms === undefined || ms < 60_000) {
-    throw new HatchwayError("USAGE", "--session-timeout must be a duration of at least 1m (e.g. 30m, 2h).");
+    throw new HatchwayError(
+      "USAGE",
+      "--session-timeout must be a duration of at least 1m (e.g. 30m, 2h).",
+    );
   }
   return ms;
 }
@@ -31,7 +34,8 @@ export function sessionTimeoutMs(options: ParsedOptions): number {
 function parsePort(value: string | boolean | undefined): number {
   if (value === undefined || typeof value === "boolean") return 0;
   const port = Number(value);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new HatchwayError("USAGE", "--port must be between 1 and 65535.");
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw new HatchwayError("USAGE", "--port must be between 1 and 65535.");
   return port;
 }
 
@@ -51,23 +55,36 @@ export async function startSession(run: SessionRunOptions): Promise<Bridge> {
 
   const chain = bridge.session.chain;
   if (chain && bridge.upstream) {
-    reporter.field("Network", `${chain.name} ${reporter.c.dim(`· chain ${chain.id} · ${bridge.upstream.display}`)}`);
+    reporter.field(
+      "Network",
+      `${chain.name} ${reporter.c.dim(`· chain ${chain.id} · ${bridge.upstream.display}`)}`,
+    );
   }
   if (run.expectedAddress) reporter.field("Account", run.expectedAddress);
   reporter.line();
 
   const url = bridge.sessionUrl;
-  reporter.event({ event: "session", url, port: bridge.port, expiresAt: new Date(bridge.session.expiresAt).toISOString() });
+  reporter.event({
+    event: "session",
+    url,
+    port: bridge.port,
+    expiresAt: new Date(bridge.session.expiresAt).toISOString(),
+  });
   reporter.line(`  Open this link in the browser where your wallet is installed:`);
   reporter.line(`  ${reporter.c.cyan(reporter.c.underline(url))}`);
 
   const remote = detectRemoteContext();
   if (remote) {
     reporter.line();
-    reporter.warn(`You are in ${remote.description}; this link points at this machine's loopback address.`);
-    reporter.note(`Forward the port from the computer with your browser, then open the link there:`);
+    reporter.warn(
+      `You are in ${remote.description}; this link points at this machine's loopback address.`,
+    );
+    reporter.note(
+      `Forward the port from the computer with your browser, then open the link there:`,
+    );
     reporter.note(`ssh -N -L ${bridge.port}:127.0.0.1:${bridge.port} <user>@<this-host>`);
-    if (options.port === undefined) reporter.note("Tip: pass --port <n> to keep the same port across runs.");
+    if (options.port === undefined)
+      reporter.note("Tip: pass --port <n> to keep the same port across runs.");
   } else if (options.open !== false && canOpenBrowser()) {
     const opened = await openInBrowser(url);
     if (!opened) reporter.note("Could not open a browser automatically; copy the link above.");
@@ -128,8 +145,12 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
         break;
       }
       case "request_abandoned":
-        reporter.warn(`The calling tool stopped waiting for request ${event.request.index}, but it is still open in your wallet.`);
-        reporter.note("Reject it in the wallet unless you want it sent anyway; the tool will not see the result.");
+        reporter.warn(
+          `The calling tool stopped waiting for request ${event.request.index}, but it is still open in your wallet.`,
+        );
+        reporter.note(
+          "Reject it in the wallet unless you want it sent anyway; the tool will not see the result.",
+        );
         break;
       case "request_finished":
         describeFinished(event.request, reporter);
@@ -142,14 +163,19 @@ function wireEvents(bridge: Bridge, reporter: Reporter): void {
 
 function describeReview(request: ApprovalRequest, reporter: Reporter): void {
   const title = request.review?.title ?? request.signatureReview?.title ?? "Request";
-  reporter.active(`${reporter.c.bold(`${request.index}.`)} ${title} ${reporter.c.dim("— review it in your browser")}`);
+  reporter.active(
+    `${reporter.c.bold(`${request.index}.`)} ${title} ${reporter.c.dim("— review it in your browser")}`,
+  );
   const review = request.review;
   if (review) {
-    if (review.constructorArgs?.length) reporter.note(`args: ${review.constructorArgs.map((a) => a.value).join(", ")}`);
-    if (review.args?.length && review.action === "call") reporter.note(`args: ${review.args.map((a) => a.value).join(", ")}`);
+    if (review.constructorArgs?.length)
+      reporter.note(`args: ${review.constructorArgs.map((a) => a.value).join(", ")}`);
+    if (review.args?.length && review.action === "call")
+      reporter.note(`args: ${review.args.map((a) => a.value).join(", ")}`);
     if (review.to && review.action !== "deploy_create2") reporter.note(`to: ${review.to}`);
     if (review.value !== "0") reporter.note(`value: ${review.valueDisplay}`);
-    if (review.simulation.status === "failed") reporter.warn(`Simulation failed: ${review.simulation.message ?? "unknown reason"}`);
+    if (review.simulation.status === "failed")
+      reporter.warn(`Simulation failed: ${review.simulation.message ?? "unknown reason"}`);
   }
   reporter.event({
     event: "request",
@@ -168,7 +194,9 @@ function describeFinished(request: ApprovalRequest, reporter: Reporter): void {
       if (result?.feePaidDisplay) parts.push(`fee ${result.feePaidDisplay}`);
       reporter.ok(`Confirmed ${reporter.c.dim(parts.join(" · "))}`);
       if (result?.contractAddress) {
-        reporter.note(`${request.review?.contractName ?? "Contract"} deployed at ${result.contractAddress}`);
+        reporter.note(
+          `${request.review?.contractName ?? "Contract"} deployed at ${result.contractAddress}`,
+        );
       }
       reporter.line();
       break;
@@ -198,7 +226,10 @@ function describeFinished(request: ApprovalRequest, reporter: Reporter): void {
 }
 
 /** Waits for a wallet, printing guidance while it waits. */
-export async function waitForWallet(bridge: Bridge, reporter: Reporter): Promise<{ address: Address }> {
+export async function waitForWallet(
+  bridge: Bridge,
+  reporter: Reporter,
+): Promise<{ address: Address }> {
   if (!bridge.session.hasBrowser) reporter.step("Waiting for the browser…");
   const wallet = await bridge.session.waitForWallet();
   return { address: wallet.address as Address };

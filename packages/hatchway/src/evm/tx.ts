@@ -40,7 +40,8 @@ const KNOWN_FIELDS = new Set([
 ]);
 
 const UNSUPPORTED_FIELDS: Record<string, string> = {
-  authorizationList: "EIP-7702 authorization lists are not supported; wallets do not accept them via eth_sendTransaction",
+  authorizationList:
+    "EIP-7702 authorization lists are not supported; wallets do not accept them via eth_sendTransaction",
   blobVersionedHashes: "EIP-4844 blob transactions are not supported",
   maxFeePerBlobGas: "EIP-4844 blob transactions are not supported",
   blobs: "EIP-4844 blob transactions are not supported",
@@ -96,12 +97,16 @@ export function normalizeTransaction(raw: unknown): CanonicalTransaction {
   const type = input.type;
   if (type !== undefined && type !== null) {
     const typeValue = parseQuantity("type", type);
-    if (typeValue === 3n) throw new HatchwayError("UNSUPPORTED_TRANSACTION", UNSUPPORTED_FIELDS.blobs!);
+    if (typeValue === 3n)
+      throw new HatchwayError("UNSUPPORTED_TRANSACTION", UNSUPPORTED_FIELDS.blobs!);
     if (typeValue === 4n) {
       throw new HatchwayError("UNSUPPORTED_TRANSACTION", UNSUPPORTED_FIELDS.authorizationList!);
     }
     if (typeValue !== undefined && typeValue > 2n) {
-      throw new HatchwayError("UNSUPPORTED_TRANSACTION", `transaction type ${type} is not supported`);
+      throw new HatchwayError(
+        "UNSUPPORTED_TRANSACTION",
+        `transaction type ${type} is not supported`,
+      );
     }
   }
 
@@ -118,7 +123,9 @@ export function normalizeTransaction(raw: unknown): CanonicalTransaction {
 
   const from = parseAddress("from", input.from);
   const to =
-    input.to === undefined || input.to === null || input.to === "" ? undefined : parseAddress("to", input.to);
+    input.to === undefined || input.to === null || input.to === ""
+      ? undefined
+      : parseAddress("to", input.to);
   const data = parseData(input.data ?? input.input);
   const value = parseQuantity("value", input.value) ?? 0n;
   const gas = parseQuantity("gas", input.gas ?? input.gasLimit);
@@ -131,7 +138,10 @@ export function normalizeTransaction(raw: unknown): CanonicalTransaction {
   const maxPriorityFeePerGas = parseQuantity("maxPriorityFeePerGas", input.maxPriorityFeePerGas);
   const chainIdValue = parseQuantity("chainId", input.chainId);
 
-  if (gasPrice !== undefined && (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined)) {
+  if (
+    gasPrice !== undefined &&
+    (maxFeePerGas !== undefined || maxPriorityFeePerGas !== undefined)
+  ) {
     throw invalid("transaction cannot set both gasPrice and EIP-1559 fee fields");
   }
   if (
@@ -169,7 +179,8 @@ export function toWalletTransaction(tx: CanonicalTransaction, chainId: number): 
   if (tx.nonce !== undefined) out.nonce = toHex(tx.nonce);
   if (tx.gasPrice !== undefined) out.gasPrice = toHex(tx.gasPrice);
   if (tx.maxFeePerGas !== undefined) out.maxFeePerGas = toHex(tx.maxFeePerGas);
-  if (tx.maxPriorityFeePerGas !== undefined) out.maxPriorityFeePerGas = toHex(tx.maxPriorityFeePerGas);
+  if (tx.maxPriorityFeePerGas !== undefined)
+    out.maxPriorityFeePerGas = toHex(tx.maxPriorityFeePerGas);
   return out;
 }
 
@@ -218,7 +229,9 @@ export function findIntegrityMismatches(
   }
   const actualTo = actual.to ? actual.to.toLowerCase() : undefined;
   if (actualTo !== expected.to?.toLowerCase()) {
-    problems.push(`destination is ${actual.to ?? "contract creation"}, expected ${expected.to ?? "contract creation"}`);
+    problems.push(
+      `destination is ${actual.to ?? "contract creation"}, expected ${expected.to ?? "contract creation"}`,
+    );
   }
   if (actual.input.toLowerCase() !== expected.data.toLowerCase()) {
     problems.push("calldata differs from the approved request");

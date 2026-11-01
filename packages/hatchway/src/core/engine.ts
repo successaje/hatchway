@@ -4,10 +4,21 @@ import { explorerTxUrl, isLocalChain, nativeSymbol } from "../evm/chains.js";
 import { formatAmount } from "../evm/format.js";
 import { buildTransactionReview, type KnownContract } from "../evm/review.js";
 import type { UpstreamRpc } from "../evm/rpc.js";
-import { findIntegrityMismatches, hashPayload, toWalletTransaction, type CanonicalTransaction } from "../evm/tx.js";
+import {
+  findIntegrityMismatches,
+  hashPayload,
+  toWalletTransaction,
+  type CanonicalTransaction,
+} from "../evm/tx.js";
 import { sleep } from "./deferred.js";
 import { HatchwayError, toHatchwayError } from "./errors.js";
-import type { BeginRequest, Notice, ResultRequest, SignatureReview, TransactionReview } from "./protocol.js";
+import type {
+  BeginRequest,
+  Notice,
+  ResultRequest,
+  SignatureReview,
+  TransactionReview,
+} from "./protocol.js";
 import type { ApprovalRequest, RequestOptions, SignatureMethod, WalletOutcome } from "./request.js";
 import type { Session } from "./session.js";
 
@@ -74,7 +85,10 @@ export class ApprovalEngine {
     }
     const chain = this.session.chain;
     if (chain && tx.chainId !== undefined && tx.chainId !== chain.id) {
-      throw new HatchwayError("WRONG_NETWORK", `Transaction targets chain ${tx.chainId}, but this session is on ${chain.name} (${chain.id}).`);
+      throw new HatchwayError(
+        "WRONG_NETWORK",
+        `Transaction targets chain ${tx.chainId}, but this session is on ${chain.name} (${chain.id}).`,
+      );
     }
     return this.session.enqueueTransaction(tx, options);
   }
@@ -82,7 +96,10 @@ export class ApprovalEngine {
   enqueueSignature(method: SignatureMethod, address: Address, payload: string): ApprovalRequest {
     const wallet = this.session.wallet;
     if (wallet && address.toLowerCase() !== wallet.address.toLowerCase()) {
-      throw new HatchwayError("WRONG_ACCOUNT", `Signature requested for ${address}, but the connected wallet is ${wallet.address}.`);
+      throw new HatchwayError(
+        "WRONG_ACCOUNT",
+        `Signature requested for ${address}, but the connected wallet is ${wallet.address}.`,
+      );
     }
     return this.session.enqueueSignature(method, address, payload);
   }
@@ -111,7 +128,10 @@ export class ApprovalEngine {
     if (request.state === "queued" || request.state === "review") {
       request.fail(
         "cancelled",
-        new HatchwayError("SESSION_CLOSED", "The calling tool stopped waiting for this request, so it was withdrawn. Nothing was sent."),
+        new HatchwayError(
+          "SESSION_CLOSED",
+          "The calling tool stopped waiting for this request, so it was withdrawn. Nothing was sent.",
+        ),
       );
       this.session.emitRequest("request_finished", request);
     } else if (request.state === "in_wallet") {
@@ -156,7 +176,8 @@ export class ApprovalEngine {
       request.outcome.resolve({ kind: "rejected", message: body.message });
       return;
     }
-    if (request.state !== "in_wallet") throw new HatchwayError("USAGE", `Request is ${request.state}, not in the wallet.`);
+    if (request.state !== "in_wallet")
+      throw new HatchwayError("USAGE", `Request is ${request.state}, not in the wallet.`);
     switch (body.outcome) {
       case "submitted":
         if (request.kind !== "transaction" || !isHex(body.hash) || body.hash.length !== 66) {
@@ -165,11 +186,16 @@ export class ApprovalEngine {
         request.outcome.resolve({ kind: "submitted", hash: body.hash });
         return;
       case "signed":
-        if (request.kind !== "signature" || !isHex(body.signature)) throw new HatchwayError("USAGE", "Invalid signature.");
+        if (request.kind !== "signature" || !isHex(body.signature))
+          throw new HatchwayError("USAGE", "Invalid signature.");
         request.outcome.resolve({ kind: "signed", signature: body.signature });
         return;
       case "error":
-        request.outcome.resolve({ kind: "error", code: body.code, message: String(body.message).slice(0, 500) });
+        request.outcome.resolve({
+          kind: "error",
+          code: body.code,
+          message: String(body.message).slice(0, 500),
+        });
         return;
     }
   }
@@ -210,7 +236,13 @@ export class ApprovalEngine {
   #failIfHalted(request: ApprovalRequest): boolean {
     const halted = this.#halted;
     if (!halted) return false;
-    request.fail("failed", new HatchwayError("PREVIOUS_FAILED", `Not sent because an earlier transaction failed: ${halted.message}`));
+    request.fail(
+      "failed",
+      new HatchwayError(
+        "PREVIOUS_FAILED",
+        `Not sent because an earlier transaction failed: ${halted.message}`,
+      ),
+    );
     this.session.emitRequest("request_finished", request);
     return true;
   }
@@ -234,7 +266,11 @@ export class ApprovalEngine {
       request.waitingFor = "previous_confirmation";
       session.changed();
       const limit = this.#options.previousConfirmationTimeoutMs ?? 10 * 60_000;
-      await Promise.race([previous.settled.promise, session.endedPromise, sleep(limit, this.#stop.signal)]);
+      await Promise.race([
+        previous.settled.promise,
+        session.endedPromise,
+        sleep(limit, this.#stop.signal),
+      ]);
     }
     if (request.isTerminal || session.ended || this.#stop.signal.aborted) return;
     if (this.#failIfHalted(request)) return;
@@ -242,7 +278,8 @@ export class ApprovalEngine {
     const upstream = this.#options.upstream();
     const chain = session.chain;
     const wallet = session.wallet;
-    if (!upstream || !chain || !wallet) throw new HatchwayError("INTERNAL", "Session is not ready.");
+    if (!upstream || !chain || !wallet)
+      throw new HatchwayError("INTERNAL", "Session is not ready.");
 
     // 3. Review data.
     request.waitingFor = "review";
@@ -274,10 +311,21 @@ export class ApprovalEngine {
     // 5. Act on the answer.
     switch (outcome.kind) {
       case "rejected":
-        request.fail("rejected", new HatchwayError("USER_REJECTED", request.kind === "transaction" ? "Transaction rejected in wallet." : "Signature request rejected in wallet."));
+        request.fail(
+          "rejected",
+          new HatchwayError(
+            "USER_REJECTED",
+            request.kind === "transaction"
+              ? "Transaction rejected in wallet."
+              : "Signature request rejected in wallet.",
+          ),
+        );
         break;
       case "error":
-        request.fail(outcome.code === 4001 ? "rejected" : "failed", walletError(outcome.code, outcome.message));
+        request.fail(
+          outcome.code === 4001 ? "rejected" : "failed",
+          walletError(outcome.code, outcome.message),
+        );
         break;
       case "submitted":
         await this.#onSubmitted(request, outcome.hash, upstream, chain.id);
@@ -289,14 +337,28 @@ export class ApprovalEngine {
     session.emitRequest("request_finished", request);
   }
 
-  async #prepareTransaction(request: ApprovalRequest, tx: CanonicalTransaction, upstream: UpstreamRpc, chainId: number): Promise<void> {
+  async #prepareTransaction(
+    request: ApprovalRequest,
+    tx: CanonicalTransaction,
+    upstream: UpstreamRpc,
+    chainId: number,
+  ): Promise<void> {
     const extraNotices: Notice[] = [];
     let expectedNonce: number | undefined;
     try {
-      const pending = await upstream.client.getTransactionCount({ address: tx.from, blockTag: "pending" });
-      expectedNonce = Math.max(pending, this.#lastBroadcastNonce !== undefined ? this.#lastBroadcastNonce + 1 : 0);
+      const pending = await upstream.client.getTransactionCount({
+        address: tx.from,
+        blockTag: "pending",
+      });
+      expectedNonce = Math.max(
+        pending,
+        this.#lastBroadcastNonce !== undefined ? this.#lastBroadcastNonce + 1 : 0,
+      );
     } catch {
-      extraNotices.push({ level: "info", message: "Could not read the account nonce from the RPC endpoint." });
+      extraNotices.push({
+        level: "info",
+        message: "Could not read the account nonce from the RPC endpoint.",
+      });
     }
     request.expectedNonce = tx.nonce ?? expectedNonce;
     if (tx.nonce !== undefined && expectedNonce !== undefined) {
@@ -332,7 +394,8 @@ export class ApprovalEngine {
     } catch (error) {
       review = minimalReview(tx, chainId, toHatchwayError(error).message);
     }
-    if (request.options.contractName && !review.contractName) review.contractName = request.options.contractName;
+    if (request.options.contractName && !review.contractName)
+      review.contractName = request.options.contractName;
     review.notices.unshift(...extraNotices);
     request.review = review;
     request.wallet = { method: "eth_sendTransaction", params: [toWalletTransaction(tx, chainId)] };
@@ -352,14 +415,24 @@ export class ApprovalEngine {
         contentKind: text === undefined ? "hex" : "text",
         notices,
       };
-      if (text === undefined) notices.push({ level: "warning", message: "The message is binary data and cannot be displayed as text." });
+      if (text === undefined)
+        notices.push({
+          level: "warning",
+          message: "The message is binary data and cannot be displayed as text.",
+        });
       request.wallet = { method: "personal_sign", params: [signature.payload, signature.address] };
     } else {
       let parsed: { domain?: Record<string, unknown>; primaryType?: string; message?: unknown };
       try {
         parsed = JSON.parse(signature.payload) as typeof parsed;
       } catch {
-        request.fail("failed", new HatchwayError("INVALID_TRANSACTION", "eth_signTypedData_v4 payload is not valid JSON."));
+        request.fail(
+          "failed",
+          new HatchwayError(
+            "INVALID_TRANSACTION",
+            "eth_signTypedData_v4 payload is not valid JSON.",
+          ),
+        );
         return;
       }
       const domain = parsed.domain ?? {};
@@ -372,18 +445,30 @@ export class ApprovalEngine {
           ...(typeof domain.name === "string" ? { name: domain.name } : {}),
           ...(typeof domain.version === "string" ? { version: domain.version } : {}),
           ...(domain.chainId !== undefined ? { chainId: String(domain.chainId) } : {}),
-          ...(typeof domain.verifyingContract === "string" ? { verifyingContract: domain.verifyingContract } : {}),
+          ...(typeof domain.verifyingContract === "string"
+            ? { verifyingContract: domain.verifyingContract }
+            : {}),
         },
         notices,
       };
       if (parsed.primaryType) review.primaryType = parsed.primaryType;
       if (domain.chainId !== undefined && Number(domain.chainId) !== chainId) {
-        notices.push({ level: "danger", message: `The signature is scoped to chain ${String(domain.chainId)}, not the session's chain ${chainId}.` });
+        notices.push({
+          level: "danger",
+          message: `The signature is scoped to chain ${String(domain.chainId)}, not the session's chain ${chainId}.`,
+        });
       }
       if (/permit/i.test(parsed.primaryType ?? "")) {
-        notices.push({ level: "warning", message: "This is a permit: signing it can authorise spending of your tokens without a separate transaction." });
+        notices.push({
+          level: "warning",
+          message:
+            "This is a permit: signing it can authorise spending of your tokens without a separate transaction.",
+        });
       }
-      request.wallet = { method: "eth_signTypedData_v4", params: [signature.address, signature.payload] };
+      request.wallet = {
+        method: "eth_signTypedData_v4",
+        params: [signature.address, signature.payload],
+      };
     }
     notices.push({ level: "info", message: "Signing does not send a transaction or spend gas." });
     request.signatureReview = review;
@@ -402,15 +487,27 @@ export class ApprovalEngine {
     let nextReconcile = 0;
     const watch = async () => {
       while (!request.outcome.settled && !this.#stop.signal.aborted) {
-        if (request.state === "review" && request.deadline !== undefined && Date.now() > request.deadline) {
-          request.fail("expired", new HatchwayError("APPROVAL_TIMEOUT", "The request was not approved in time."));
+        if (
+          request.state === "review" &&
+          request.deadline !== undefined &&
+          Date.now() > request.deadline
+        ) {
+          request.fail(
+            "expired",
+            new HatchwayError("APPROVAL_TIMEOUT", "The request was not approved in time."),
+          );
           return;
         }
         if (request.state === "in_wallet" && request.tx && Date.now() >= nextReconcile) {
           nextReconcile = Date.now() + (local ? 1_000 : 4_000);
           try {
             reconcileFrom ??= await upstream.client.getBlockNumber();
-            const found = await findSentTransaction(upstream, request, request.expectedNonce, reconcileFrom);
+            const found = await findSentTransaction(
+              upstream,
+              request,
+              request.expectedNonce,
+              reconcileFrom,
+            );
             if (found) request.outcome.resolve({ kind: "submitted", hash: found });
           } catch {
             // Best effort; the browser's answer remains the primary signal.
@@ -423,9 +520,13 @@ export class ApprovalEngine {
     return request.outcome.promise;
   }
 
-  async #onSubmitted(request: ApprovalRequest, hash: Hex, upstream: UpstreamRpc, chainId: number): Promise<void> {
+  async #onSubmitted(
+    request: ApprovalRequest,
+    hash: Hex,
+    upstream: UpstreamRpc,
+    chainId: number,
+  ): Promise<void> {
     const session = this.session;
-    const tx = request.tx!;
     request.state = "submitted";
     request.result = { hash, ...optionalUrl(explorerTxUrl(chainId, hash)) };
     session.changed();
@@ -445,7 +546,8 @@ export class ApprovalEngine {
     if (!verification.found) {
       request.review?.notices.push({
         level: "warning",
-        message: "The transaction is not visible on your RPC endpoint yet, so its contents could not be verified.",
+        message:
+          "The transaction is not visible on your RPC endpoint yet, so its contents could not be verified.",
       });
     }
     if (verification.nonce !== undefined) {
@@ -485,7 +587,12 @@ export class ApprovalEngine {
     return { found: false, problems: [] };
   }
 
-  async #track(request: ApprovalRequest, hash: Hex, upstream: UpstreamRpc, chainId: number): Promise<void> {
+  async #track(
+    request: ApprovalRequest,
+    hash: Hex,
+    upstream: UpstreamRpc,
+    chainId: number,
+  ): Promise<void> {
     const session = this.session;
     const local = isLocalChain(chainId);
     const interval = local ? 300 : 2_000;
@@ -502,16 +609,22 @@ export class ApprovalEngine {
           gasUsed: receipt.gasUsed.toString(),
           feePaid: fee.toString(),
           feePaidDisplay: formatAmount(fee, nativeSymbol(chainId)),
-          ...(receipt.contractAddress ? { contractAddress: getAddress(receipt.contractAddress) } : {}),
+          ...(receipt.contractAddress
+            ? { contractAddress: getAddress(receipt.contractAddress) }
+            : {}),
         };
         if (receipt.status === "success") {
           request.state = "confirmed";
           await this.#rememberDeployment(request, receipt.contractAddress ?? undefined);
           request.settled.resolve();
         } else {
-          const error = new HatchwayError("TRANSACTION_REVERTED", `Transaction reverted on-chain in block ${receipt.blockNumber}.`, {
-            details: { hash },
-          });
+          const error = new HatchwayError(
+            "TRANSACTION_REVERTED",
+            `Transaction reverted on-chain in block ${receipt.blockNumber}.`,
+            {
+              details: { hash },
+            },
+          );
           this.#halted = error;
           request.fail("reverted", error);
         }
@@ -519,11 +632,17 @@ export class ApprovalEngine {
         return;
       } catch {
         // Not mined yet (or a transient RPC error). Periodically check for replacement.
-        if (polls % 10 === 0 && request.broadcastNonce !== undefined && (await wasReplaced(upstream, request, hash))) {
+        if (
+          polls % 10 === 0 &&
+          request.broadcastNonce !== undefined &&
+          (await wasReplaced(upstream, request, hash))
+        ) {
           const error = new HatchwayError(
             "TRANSACTION_REPLACED",
             `Transaction ${hash} was replaced or dropped (another transaction used nonce ${request.broadcastNonce}).`,
-            { hint: "Avoid using the wallet's speed-up or cancel actions during a Hatchway session." },
+            {
+              hint: "Avoid using the wallet's speed-up or cancel actions during a Hatchway session.",
+            },
           );
           this.#halted = error;
           request.fail("failed", error);
@@ -537,13 +656,19 @@ export class ApprovalEngine {
 
   async #rememberDeployment(request: ApprovalRequest, address: string | undefined): Promise<void> {
     const review = request.review;
-    const deployed = address ?? (review?.action === "deploy_create2" ? review.predictedAddress : undefined);
+    const deployed =
+      address ?? (review?.action === "deploy_create2" ? review.predictedAddress : undefined);
     if (!deployed || !review?.contractName) return;
     const artifacts = await this.#options.artifacts().catch(() => ArtifactIndex.empty());
     const entry =
-      artifacts.findByName(review.contractName).find((e) => !review.sourcePath || e.sourcePath === review.sourcePath) ??
+      artifacts
+        .findByName(review.contractName)
+        .find((e) => !review.sourcePath || e.sourcePath === review.sourcePath) ??
       artifacts.findByName(review.contractName)[0];
-    this.#known.set(deployed.toLowerCase(), { name: review.contractName, ...(entry ? { abi: entry.abi } : {}) });
+    this.#known.set(deployed.toLowerCase(), {
+      name: review.contractName,
+      ...(entry ? { abi: entry.abi } : {}),
+    });
   }
 
   async #onSigned(request: ApprovalRequest, signature: Hex, upstream: UpstreamRpc): Promise<void> {
@@ -551,16 +676,32 @@ export class ApprovalEngine {
     let valid: boolean | undefined;
     try {
       if (details.method === "personal_sign") {
-        valid = await upstream.client.verifyMessage({ address: details.address, message: { raw: details.payload as Hex }, signature });
+        valid = await upstream.client.verifyMessage({
+          address: details.address,
+          message: { raw: details.payload as Hex },
+          signature,
+        });
       } else {
-        const typed = JSON.parse(details.payload) as Parameters<UpstreamRpc["client"]["verifyTypedData"]>[0];
-        valid = await upstream.client.verifyTypedData({ ...typed, address: details.address, signature });
+        const typed = JSON.parse(details.payload) as Parameters<
+          UpstreamRpc["client"]["verifyTypedData"]
+        >[0];
+        valid = await upstream.client.verifyTypedData({
+          ...typed,
+          address: details.address,
+          signature,
+        });
       }
     } catch {
       valid = undefined;
     }
     if (valid === false) {
-      request.fail("failed", new HatchwayError("INTEGRITY_MISMATCH", `The signature does not belong to ${details.address}.`));
+      request.fail(
+        "failed",
+        new HatchwayError(
+          "INTEGRITY_MISMATCH",
+          `The signature does not belong to ${details.address}.`,
+        ),
+      );
       return;
     }
     request.state = "signed";
@@ -578,7 +719,10 @@ function walletError(code: number | undefined, message: string): HatchwayError {
       return new HatchwayError("WRONG_ACCOUNT", `The wallet refused the account: ${message}`);
     case 4900:
     case 4901:
-      return new HatchwayError("WRONG_NETWORK", `The wallet is not connected to the expected network: ${message}`);
+      return new HatchwayError(
+        "WRONG_NETWORK",
+        `The wallet is not connected to the expected network: ${message}`,
+      );
     default:
       return new HatchwayError("WALLET_ERROR", `The wallet returned an error: ${message}`);
   }
@@ -588,7 +732,11 @@ function optionalUrl(url: string | undefined): { explorerUrl?: string } {
   return url ? { explorerUrl: url } : {};
 }
 
-function minimalReview(tx: CanonicalTransaction, chainId: number, reason: string): TransactionReview {
+function minimalReview(
+  tx: CanonicalTransaction,
+  chainId: number,
+  reason: string,
+): TransactionReview {
   const symbol = nativeSymbol(chainId);
   const review: TransactionReview = {
     action: tx.to ? (tx.data === "0x" ? "transfer" : "call") : "deploy",
@@ -629,7 +777,10 @@ async function findSentTransaction(
 ): Promise<Hex | undefined> {
   const tx = request.tx;
   if (!tx || nonce === undefined) return undefined;
-  const latestNonce = await upstream.client.getTransactionCount({ address: tx.from, blockTag: "latest" });
+  const latestNonce = await upstream.client.getTransactionCount({
+    address: tx.from,
+    blockTag: "latest",
+  });
   if (latestNonce <= nonce) return undefined;
   const latest = await upstream.client.getBlockNumber();
   const start = latest - fromBlock > 50n ? latest - 50n : fromBlock;
@@ -645,9 +796,16 @@ async function findSentTransaction(
   return undefined;
 }
 
-async function wasReplaced(upstream: UpstreamRpc, request: ApprovalRequest, hash: Hex): Promise<boolean> {
+async function wasReplaced(
+  upstream: UpstreamRpc,
+  request: ApprovalRequest,
+  hash: Hex,
+): Promise<boolean> {
   const nonce = request.broadcastNonce!;
-  const latestNonce = await upstream.client.getTransactionCount({ address: request.tx!.from, blockTag: "latest" });
+  const latestNonce = await upstream.client.getTransactionCount({
+    address: request.tx!.from,
+    blockTag: "latest",
+  });
   if (latestNonce <= nonce) return false;
   try {
     await upstream.client.getTransactionReceipt({ hash });

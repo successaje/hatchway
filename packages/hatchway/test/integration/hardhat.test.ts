@@ -12,7 +12,11 @@ let anvil: Anvil;
 const deployer = ANVIL_ACCOUNTS[0];
 
 beforeAll(async () => {
-  execFileSync(process.execPath, [join(HARDHAT_EXAMPLE, "node_modules/hardhat/dist/src/cli.js"), "build"], { cwd: HARDHAT_EXAMPLE, stdio: "ignore" });
+  execFileSync(
+    process.execPath,
+    [join(HARDHAT_EXAMPLE, "node_modules/hardhat/dist/src/cli.js"), "build"],
+    { cwd: HARDHAT_EXAMPLE, stdio: "ignore" },
+  );
   anvil = await startAnvil();
 });
 
@@ -21,9 +25,19 @@ afterAll(async () => {
 });
 
 async function hardhat(args: string[], decide?: (r: RequestView) => Decision) {
-  const run = runCli(["hardhat", "--json", "--no-open", ...args], { cwd: HARDHAT_EXAMPLE, env: { LOCAL_RPC_URL: anvil.url } });
+  const run = runCli(["hardhat", "--json", "--no-open", ...args], {
+    cwd: HARDHAT_EXAMPLE,
+    env: { LOCAL_RPC_URL: anvil.url },
+  });
   const url = await Promise.race([run.sessionUrl, run.exited.then(() => undefined)]);
-  const wallet = url ? await HeadlessWallet.open({ sessionUrl: url, nodeUrl: anvil.url, address: deployer, ...(decide ? { decide } : {}) }) : undefined;
+  const wallet = url
+    ? await HeadlessWallet.open({
+        sessionUrl: url,
+        nodeUrl: anvil.url,
+        address: deployer,
+        ...(decide ? { decide } : {}),
+      })
+    : undefined;
   const code = await run.exited;
   wallet?.close();
   const result = run.result();
@@ -32,7 +46,13 @@ async function hardhat(args: string[], decide?: (r: RequestView) => Decision) {
 }
 
 function transactions(result: CliEvent) {
-  return result.transactions as { title: string; state: string; kind: string; hash?: string; contractAddress?: string }[];
+  return result.transactions as {
+    title: string;
+    state: string;
+    kind: string;
+    hash?: string;
+    contractAddress?: string;
+  }[];
 }
 
 describe("hatchway hardhat (Hardhat 3 plugin, real hardhat + anvil)", () => {
@@ -40,13 +60,23 @@ describe("hatchway hardhat (Hardhat 3 plugin, real hardhat + anvil)", () => {
     const run = await hardhat(["run", "scripts/deploy.ts", "--network", "localhost"]);
     expect(run.code, run.stderr).toBe(0);
     const txs = transactions(run.result);
-    expect(txs.map((t) => t.title)).toEqual(["Deploy HatchToken", "Deploy Counter", "Counter.setNumber"]);
+    expect(txs.map((t) => t.title)).toEqual([
+      "Deploy HatchToken",
+      "Deploy Counter",
+      "Counter.setNumber",
+    ]);
     expect(txs.every((t) => t.state === "confirmed")).toBe(true);
     expect(run.stderr).toContain(`Deployer: ${deployer}`);
     const counter = txs[1]!.contractAddress as Address;
-    const number = await anvil.client.readContract({ address: counter, abi: parseAbi(["function number() view returns (uint256)"]), functionName: "number" });
+    const number = await anvil.client.readContract({
+      address: counter,
+      abi: parseAbi(["function number() view returns (uint256)"]),
+      functionName: "number",
+    });
     expect(number).toBe(7n);
-    const receipt = await anvil.client.getTransactionReceipt({ hash: txs[0]!.hash as `0x${string}` });
+    const receipt = await anvil.client.getTransactionReceipt({
+      hash: txs[0]!.hash as `0x${string}`,
+    });
     expect(getAddress(receipt.from)).toBe(deployer);
   });
 
@@ -59,16 +89,28 @@ describe("hatchway hardhat (Hardhat 3 plugin, real hardhat + anvil)", () => {
 
   it("deploys a Hardhat Ignition module", async () => {
     rmSync(join(HARDHAT_EXAMPLE, "ignition/deployments"), { recursive: true, force: true });
-    const run = await hardhat(["ignition", "deploy", "ignition/modules/Token.ts", "--network", "localhost"]);
+    const run = await hardhat([
+      "ignition",
+      "deploy",
+      "ignition/modules/Token.ts",
+      "--network",
+      "localhost",
+    ]);
     expect(run.code, run.stderr).toBe(0);
     const txs = transactions(run.result);
     expect(txs).toHaveLength(3);
     expect(txs.every((t) => t.state === "confirmed")).toBe(true);
-    expect(txs.map((t) => t.title).sort()).toEqual(["Counter.setNumber", "Deploy Counter", "Deploy HatchToken"]);
+    expect(txs.map((t) => t.title).sort()).toEqual([
+      "Counter.setNumber",
+      "Deploy Counter",
+      "Deploy HatchToken",
+    ]);
   });
 
   it("propagates a wallet rejection as a failed script", async () => {
-    const run = await hardhat(["run", "scripts/deploy.ts", "--network", "localhost"], () => ({ action: "reject" }));
+    const run = await hardhat(["run", "scripts/deploy.ts", "--network", "localhost"], () => ({
+      action: "reject",
+    }));
     expect(run.code).toBe(3);
     expect(run.result.error).toMatchObject({ code: "USER_REJECTED" });
   });
@@ -82,7 +124,9 @@ describe("hatchway hardhat (Hardhat 3 plugin, real hardhat + anvil)", () => {
   });
 
   it("requires --network", async () => {
-    const run = runCli(["hardhat", "--json", "--no-open", "run", "scripts/deploy.ts"], { cwd: HARDHAT_EXAMPLE });
+    const run = runCli(["hardhat", "--json", "--no-open", "run", "scripts/deploy.ts"], {
+      cwd: HARDHAT_EXAMPLE,
+    });
     expect(await run.exited).toBe(2);
     expect(run.result()?.error).toMatchObject({ code: "USAGE" });
   });

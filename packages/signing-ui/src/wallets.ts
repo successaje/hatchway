@@ -30,16 +30,30 @@ export interface ProviderError {
 
 export function asProviderError(error: unknown): ProviderError {
   if (error && typeof error === "object") {
-    const e = error as { code?: unknown; message?: unknown; data?: { originalError?: { code?: unknown } } };
-    const code = typeof e.code === "number" ? e.code : typeof e.data?.originalError?.code === "number" ? (e.data.originalError.code as number) : undefined;
-    return { ...(code !== undefined ? { code } : {}), message: typeof e.message === "string" ? e.message : String(error) };
+    const e = error as {
+      code?: unknown;
+      message?: unknown;
+      data?: { originalError?: { code?: unknown } };
+    };
+    const code =
+      typeof e.code === "number"
+        ? e.code
+        : typeof e.data?.originalError?.code === "number"
+          ? (e.data.originalError.code as number)
+          : undefined;
+    return {
+      ...(code !== undefined ? { code } : {}),
+      message: typeof e.message === "string" ? e.message : String(error),
+    };
   }
   return { message: String(error) };
 }
 
 /** Accepts only data: image URIs for wallet icons, which the page CSP also enforces. */
 function safeIcon(icon: unknown): string | undefined {
-  return typeof icon === "string" && /^data:image\/(svg\+xml|png|webp|jpeg|gif)[;,]/.test(icon) ? icon : undefined;
+  return typeof icon === "string" && /^data:image\/(svg\+xml|png|webp|jpeg|gif)[;,]/.test(icon)
+    ? icon
+    : undefined;
 }
 
 function legacyName(provider: Record<string, unknown>): string {
@@ -57,8 +71,11 @@ function legacyName(provider: Record<string, unknown>): string {
 export function discoverWallets(onChange: (wallets: WalletOption[]) => void): () => void {
   const wallets = new Map<string, WalletOption>();
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent<{ info?: Partial<WalletInfo>; provider?: Eip1193Provider }>).detail;
-    if (!detail?.info?.uuid || !detail.provider || typeof detail.provider.request !== "function") return;
+    const detail = (
+      event as CustomEvent<{ info?: Partial<WalletInfo>; provider?: Eip1193Provider }>
+    ).detail;
+    if (!detail?.info?.uuid || !detail.provider || typeof detail.provider.request !== "function")
+      return;
     const info = detail.info;
     const icon = safeIcon(info.icon);
     wallets.set(info.uuid!, {
@@ -76,9 +93,15 @@ export function discoverWallets(onChange: (wallets: WalletOption[]) => void): ()
   window.dispatchEvent(new Event("eip6963:requestProvider"));
 
   const fallback = window.setTimeout(() => {
-    const injected = (window as unknown as { ethereum?: Eip1193Provider & Record<string, unknown> }).ethereum;
+    const injected = (window as unknown as { ethereum?: Eip1193Provider & Record<string, unknown> })
+      .ethereum;
     if (wallets.size === 0 && injected && typeof injected.request === "function") {
-      wallets.set("legacy", { id: "legacy", name: legacyName(injected), legacy: true, provider: injected });
+      wallets.set("legacy", {
+        id: "legacy",
+        name: legacyName(injected),
+        legacy: true,
+        provider: injected,
+      });
     }
     onChange([...wallets.values()]);
   }, 700);
@@ -89,8 +112,13 @@ export function discoverWallets(onChange: (wallets: WalletOption[]) => void): ()
   };
 }
 
-export async function readAccount(provider: Eip1193Provider, prompt: boolean): Promise<string | undefined> {
-  const accounts = (await provider.request({ method: prompt ? "eth_requestAccounts" : "eth_accounts" })) as unknown;
+export async function readAccount(
+  provider: Eip1193Provider,
+  prompt: boolean,
+): Promise<string | undefined> {
+  const accounts = (await provider.request({
+    method: prompt ? "eth_requestAccounts" : "eth_accounts",
+  })) as unknown;
   return Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : undefined;
 }
 

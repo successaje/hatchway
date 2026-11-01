@@ -22,7 +22,12 @@ const attached = new WeakMap<object, Promise<void>>();
 
 let nextId = 1;
 
-async function callBridge(url: string, method: string, params: unknown, id: JsonRpcRequest["id"]): Promise<JsonRpcResponse> {
+async function callBridge(
+  url: string,
+  method: string,
+  params: unknown,
+  id: JsonRpcRequest["id"],
+): Promise<JsonRpcResponse> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -34,7 +39,10 @@ async function callBridge(url: string, method: string, params: unknown, id: Json
     return {
       jsonrpc: "2.0",
       id,
-      error: { code: 4900, message: "The Hatchway session is not reachable. Was `hatchway hardhat` stopped?" },
+      error: {
+        code: 4900,
+        message: "The Hatchway session is not reachable. Was `hatchway hardhat` stopped?",
+      },
     };
   }
   let body: unknown;
@@ -44,8 +52,15 @@ async function callBridge(url: string, method: string, params: unknown, id: Json
     body = undefined;
   }
   if (body && typeof body === "object" && "jsonrpc" in body) return body as JsonRpcResponse;
-  const message = body && typeof body === "object" && "message" in body ? String((body as { message: unknown }).message) : `HTTP ${response.status}`;
-  return { jsonrpc: "2.0", id, error: { code: 4900, message: `Hatchway session refused the request: ${message}` } };
+  const message =
+    body && typeof body === "object" && "message" in body
+      ? String((body as { message: unknown }).message)
+      : `HTTP ${response.status}`;
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: { code: 4900, message: `Hatchway session refused the request: ${message}` },
+  };
 }
 
 function errorResponse(id: JsonRpcRequest["id"], message: string): JsonRpcResponse {
@@ -59,7 +74,14 @@ async function attach(bridge: string, connection: NetworkConnection<string>): Pr
   const result = await callBridge(
     bridge,
     "hatchway_attach",
-    [{ url, headers: config.httpHeaders, network: connection.networkName, ...(config.chainId ? { chainId: config.chainId } : {}) }],
+    [
+      {
+        url,
+        headers: config.httpHeaders,
+        network: connection.networkName,
+        ...(config.chainId ? { chainId: config.chainId } : {}),
+      },
+    ],
     `attach-${nextId++}`,
   );
   if ("error" in result && result.error) throw new Error(`Hatchway: ${result.error.message}`);
@@ -86,8 +108,16 @@ export default async (): Promise<Partial<NetworkHooks>> => ({
     try {
       await ready;
     } catch (error) {
-      return errorResponse(jsonRpcRequest.id, error instanceof Error ? error.message : String(error));
+      return errorResponse(
+        jsonRpcRequest.id,
+        error instanceof Error ? error.message : String(error),
+      );
     }
-    return callBridge(bridge, jsonRpcRequest.method, jsonRpcRequest.params ?? [], jsonRpcRequest.id);
+    return callBridge(
+      bridge,
+      jsonRpcRequest.method,
+      jsonRpcRequest.params ?? [],
+      jsonRpcRequest.id,
+    );
   },
 });

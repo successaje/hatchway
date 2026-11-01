@@ -100,7 +100,10 @@ export class ApprovalRequest {
   }
 
   /** Moves to a terminal failure state and notifies every waiter. */
-  fail(state: "rejected" | "failed" | "expired" | "cancelled" | "reverted", error: HatchwayError): void {
+  fail(
+    state: "rejected" | "failed" | "expired" | "cancelled" | "reverted",
+    error: HatchwayError,
+  ): void {
     if (this.isTerminal) return;
     this.state = state;
     this.error = { code: error.code, message: error.message };
@@ -140,7 +143,13 @@ function placeholderPayload(request: ApprovalRequest): WalletRequestPayload {
   if (request.signature) {
     return request.signature.method === "personal_sign"
       ? { method: "personal_sign", params: [request.signature.payload, request.signature.address] }
-      : { method: "eth_signTypedData_v4", params: [request.signature.address, request.signature.payload] };
+      : {
+          method: "eth_signTypedData_v4",
+          params: [request.signature.address, request.signature.payload],
+        };
   }
-  return { method: "eth_sendTransaction", params: [{ from: request.tx?.from ?? "", value: "0x0", data: "0x", chainId: "0x0" }] };
+  return {
+    method: "eth_sendTransaction",
+    params: [{ from: request.tx?.from ?? "", value: "0x0", data: "0x", chainId: "0x0" }],
+  };
 }
