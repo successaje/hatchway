@@ -1,0 +1,74 @@
+{
+  "name": "hatchway",
+  "version": "0.1.0",
+  "description": "Deploy from your terminal. Approve with your wallet. Keep your keys.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Success Aje",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/successaje/hatchway.git",
+    "directory": "packages/hatchway"
+  },
+  "homepage": "https://github.com/successaje/hatchway#readme",
+  "bugs": "https://github.com/successaje/hatchway/issues",
+  "keywords": [
+    "ethereum",
+    "evm",
+    "foundry",
+    "forge",
+    "hardhat",
+    "hardhat-plugin",
+    "metamask",
+    "rabby",
+    "wallet",
+    "deploy",
+    "eip-6963",
+    "eip-1193"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "hatchway": "./dist/bin.js"
+  },
+  "exports": {
+    "./hardhat": {
+      "types": "./dist/hardhat/index.d.ts",
+      "default": "./dist/hardhat/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/copy-ui.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:all": "vitest run"
+  },
+  "dependencies": {
+    "open": "10.2.0",
+    "picocolors": "1.1.1",
+    "viem": "2.57.14"
+  },
+  "peerDependencies": {
+    "hardhat": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hardhat": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@hatchway/signing-ui": "workspace:*",
+    "@types/node": "24.19.2",
+    "hardhat": "3.21.2",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}
