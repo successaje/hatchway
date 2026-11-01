@@ -1,4 +1,4 @@
-import { relative } from "node:path";
+import { basename, relative } from "node:path";
 import {
   configMentionsPlugin,
   locateHardhat,
@@ -42,7 +42,7 @@ export async function hardhatCommand(
       hint: "Your wallet signs on a real network: e.g. --network localhost (with `npx hardhat node` or anvil running) or a testnet from your config.",
     });
   }
-  const projectLabel = relative(process.cwd(), project.root) || ".";
+  const projectLabel = relative(process.cwd(), project.root) || basename(project.root);
   const title = `hardhat ${rest.join(" ")}`;
   reporter.header(title);
   reporter.field("Project", `${projectLabel} ${reporter.c.dim(`(Hardhat ${project.version})`)}`);

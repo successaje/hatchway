@@ -1,6 +1,6 @@
 import { createPublicClient, custom, type PublicClient } from "viem";
 import { HatchwayError } from "../core/errors.js";
-import { redactUrl, scrubSecrets } from "../util/redact.js";
+import { redactUrl, scrubSecrets, urlSecrets } from "../util/redact.js";
 
 export interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -71,7 +71,7 @@ export class UpstreamRpc {
   }
 
   get secrets(): string[] {
-    return [this.url, ...Object.values(this.#headers)];
+    return [...urlSecrets(this.url), ...Object.values(this.#headers)];
   }
 
   async request<T = unknown>(method: string, params: unknown = []): Promise<T> {

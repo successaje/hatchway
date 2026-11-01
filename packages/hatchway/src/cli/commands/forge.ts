@@ -1,4 +1,4 @@
-import { relative } from "node:path";
+import { basename, relative } from "node:path";
 import { getAddress, isAddress } from "viem";
 import {
   buildForgeArgs,
@@ -52,7 +52,7 @@ export async function forgeCommand(
     throw new HatchwayError("USAGE", `--sender ${invocation.sender} is not a valid address.`);
   }
   const upstreamUrl = await resolveForgeRpc(invocation.rpc, root);
-  const project = relative(process.cwd(), root) || ".";
+  const project = relative(process.cwd(), root) || basename(root);
   const title = `forge script ${invocation.script ?? ""}`.trim();
 
   reporter.header(title);

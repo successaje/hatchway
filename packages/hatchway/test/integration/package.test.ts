@@ -22,7 +22,10 @@ beforeAll(async () => {
     cwd: join(REPO_ROOT, "packages/hatchway"),
     encoding: "utf8",
   });
-  tarball = join(workdir, readdirSync(workdir).find((f) => f.endsWith(".tgz"))!);
+  tarball = join(
+    workdir,
+    readdirSync(workdir).find((f) => f.endsWith(".tgz"))!,
+  );
   expect(out).toContain(".tgz");
   anvil = await startAnvil();
 }, 120_000);
@@ -49,7 +52,9 @@ function installedRun(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}) 
     }
   });
   child.stderr.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
-  const exited = new Promise<number>((resolve) => child.once("close", (code) => resolve(code ?? -1)));
+  const exited = new Promise<number>((resolve) =>
+    child.once("close", (code) => resolve(code ?? -1)),
+  );
   const result = () =>
     JSON.parse(
       stdout
@@ -72,7 +77,9 @@ describe("packed npm package", () => {
     expect(listing).toContain("package/README.md");
     expect(listing).toContain("package/LICENSE");
     expect(listing.some((f) => f.includes("/test/") || f.includes("/src/"))).toBe(false);
-    const manifest = JSON.parse(execFileSync("tar", ["-xOzf", tarball, "package/package.json"], { encoding: "utf8" })) as {
+    const manifest = JSON.parse(
+      execFileSync("tar", ["-xOzf", tarball, "package/package.json"], { encoding: "utf8" }),
+    ) as {
       devDependencies?: Record<string, string>;
     };
     expect(JSON.stringify(manifest)).not.toContain("workspace:");
@@ -84,12 +91,34 @@ describe("packed npm package", () => {
       recursive: true,
       filter: (src) => !/[/\\](out|cache|broadcast|\.hatchway)$/.test(src),
     });
-    writeFileSync(join(project, "package.json"), JSON.stringify({ name: "consumer", private: true }));
-    execFileSync("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error", tarball], { cwd: project, stdio: "ignore" });
-    expect(execFileSync(join(project, "node_modules/.bin/hatchway"), ["--version"], { encoding: "utf8" }).trim()).toMatch(/^\d+\.\d+\.\d+/);
+    writeFileSync(
+      join(project, "package.json"),
+      JSON.stringify({ name: "consumer", private: true }),
+    );
+    execFileSync("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error", tarball], {
+      cwd: project,
+      stdio: "ignore",
+    });
+    expect(
+      execFileSync(join(project, "node_modules/.bin/hatchway"), ["--version"], {
+        encoding: "utf8",
+      }).trim(),
+    ).toMatch(/^\d+\.\d+\.\d+/);
 
-    const run = installedRun(project, ["forge", "--json", "--no-open", "script/DeployToken.s.sol", "--rpc-url", anvil.url, "--broadcast"]);
-    const wallet = await HeadlessWallet.open({ sessionUrl: await run.sessionUrl, nodeUrl: anvil.url, address: ANVIL_ACCOUNTS[0] });
+    const run = installedRun(project, [
+      "forge",
+      "--json",
+      "--no-open",
+      "script/DeployToken.s.sol",
+      "--rpc-url",
+      anvil.url,
+      "--broadcast",
+    ]);
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: ANVIL_ACCOUNTS[0],
+    });
     expect(await run.exited, run.stderr()).toBe(0);
     wallet.close();
     expect(run.result().transactions?.[0]?.state).toBe("confirmed");
@@ -99,17 +128,35 @@ describe("packed npm package", () => {
     const project = join(workdir, "hardhat-consumer");
     cpSync(HARDHAT_EXAMPLE, project, {
       recursive: true,
-      filter: (src) => !/[/\\](node_modules|artifacts|cache|types|deployments|\.hatchway)$/.test(src),
+      filter: (src) =>
+        !/[/\\](node_modules|artifacts|cache|types|deployments|\.hatchway)$/.test(src),
     });
-    const pkg = JSON.parse(readFileSync(join(project, "package.json"), "utf8")) as { devDependencies: Record<string, string> };
+    const pkg = JSON.parse(readFileSync(join(project, "package.json"), "utf8")) as {
+      devDependencies: Record<string, string>;
+    };
     pkg.devDependencies.hatchway = `file:${tarball}`;
     writeFileSync(join(project, "package.json"), JSON.stringify(pkg, null, 2));
-    execFileSync("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error"], { cwd: project, stdio: "ignore" });
+    execFileSync("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error"], {
+      cwd: project,
+      stdio: "ignore",
+    });
 
-    const run = installedRun(project, ["hardhat", "--json", "--no-open", "run", "scripts/deploy.ts", "--network", "localhost"], { LOCAL_RPC_URL: anvil.url });
-    const wallet = await HeadlessWallet.open({ sessionUrl: await run.sessionUrl, nodeUrl: anvil.url, address: ANVIL_ACCOUNTS[0] });
+    const run = installedRun(
+      project,
+      ["hardhat", "--json", "--no-open", "run", "scripts/deploy.ts", "--network", "localhost"],
+      { LOCAL_RPC_URL: anvil.url },
+    );
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: ANVIL_ACCOUNTS[0],
+    });
     expect(await run.exited, run.stderr()).toBe(0);
     wallet.close();
-    expect(run.result().transactions?.map((t) => t.state)).toEqual(["confirmed", "confirmed", "confirmed"]);
+    expect(run.result().transactions?.map((t) => t.state)).toEqual([
+      "confirmed",
+      "confirmed",
+      "confirmed",
+    ]);
   }, 600_000);
 });

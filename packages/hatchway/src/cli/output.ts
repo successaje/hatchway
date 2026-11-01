@@ -55,7 +55,7 @@ export class Reporter {
   }
 
   field(label: string, value: string): void {
-    this.line(`  ${this.c.dim(label.padEnd(10))}${value}`);
+    this.line(`  ${this.c.dim(label.padEnd(11))}${value}`);
   }
 
   step(text: string): void {

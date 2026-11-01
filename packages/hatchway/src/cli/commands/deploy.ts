@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
 import { encodeDeployData, getAddress, isAddress, type Abi, type Hex } from "viem";
 import { findFoundryRoot, foundryMissing } from "../../adapters/foundry.js";
 import { findHardhatConfig, locateHardhat } from "../../adapters/hardhat.js";
@@ -80,7 +80,7 @@ export async function deployCommand(
   if (framework)
     reporter.field(
       "Project",
-      `${relative(process.cwd(), root) || "."} ${reporter.c.dim(`(${framework === "foundry" ? "Foundry" : "Hardhat"})`)}`,
+      `${relative(process.cwd(), root) || basename(root)} ${reporter.c.dim(`(${framework === "foundry" ? "Foundry" : "Hardhat"})`)}`,
     );
 
   const bridge = await startSession({
@@ -88,7 +88,7 @@ export async function deployCommand(
     purpose: {
       kind: "deploy",
       title: `deploy ${entry.name}`,
-      project: relative(process.cwd(), root) || ".",
+      project: relative(process.cwd(), root) || basename(root),
     },
     options,
     upstream: { url: rpcUrl },

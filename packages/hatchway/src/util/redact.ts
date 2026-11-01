@@ -25,6 +25,26 @@ export function redactUrl(raw: string): string {
   return url.toString().replaceAll("%2A%2A%2A", "***");
 }
 
+/**
+ * The sensitive parts of a URL (credentials, query values, key-like path segments), so they
+ * can be scrubbed from free text without hiding the harmless host and port.
+ */
+export function urlSecrets(raw: string): string[] {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return [raw];
+  }
+  const secrets: string[] = [];
+  if (url.username) secrets.push(decodeURIComponent(url.username));
+  if (url.password) secrets.push(decodeURIComponent(url.password));
+  for (const segment of url.pathname.split("/"))
+    if (SECRETISH_SEGMENT.test(segment)) secrets.push(segment);
+  for (const value of url.searchParams.values()) if (value) secrets.push(value);
+  return secrets;
+}
+
 /** True for http(s) URLs that point at this machine and carry no credentials. */
 export function isLoopbackUrl(raw: string): boolean {
   try {

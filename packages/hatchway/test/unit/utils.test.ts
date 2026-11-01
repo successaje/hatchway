@@ -167,3 +167,18 @@ describe("chains", () => {
     expect(chainSummary(987654321)).toMatchObject({ name: "Chain 987654321", nativeSymbol: "ETH" });
   });
 });
+
+describe("urlSecrets", () => {
+  it("returns only the sensitive parts of a URL", async () => {
+    const { urlSecrets } = await import("../../src/util/redact.js");
+    expect(urlSecrets("http://127.0.0.1:8545")).toEqual([]);
+    expect(urlSecrets("https://eth.g.alchemy.com/v2/abcDEF1234567890xyzKEY")).toEqual([
+      "abcDEF1234567890xyzKEY",
+    ]);
+    expect(urlSecrets("https://u:p4ssword@rpc.example/?apikey=k3y")).toEqual([
+      "u",
+      "p4ssword",
+      "k3y",
+    ]);
+  });
+});
