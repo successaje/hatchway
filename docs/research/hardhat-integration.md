@@ -62,4 +62,5 @@ The same approval engine serves Foundry, Hardhat and `connect`; only the transpo
   printed endpoint).
 - Hardhat's in-process network (`default`/`hardhat`).
 - Networks configured with local `accounts` keep working for reads, but signing always goes to
-  the browser wallet while the plugin is active.
+  the browser wallet while the plugin is active, and raw transactions signed with local keys are
+  refused.

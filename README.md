@@ -245,19 +245,20 @@ instead of prompting again. Architecture details: [docs/architecture/decisions.m
 Hatchway never asks for a seed phrase, private key, keystore or wallet password, and stores
 no signing material. The wallet is the only signer and the final authority.
 
-| Surface             | Protection                                                                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Network exposure    | Binds `127.0.0.1` only; never `0.0.0.0`. Remote use goes through SSH port forwarding.                                                                            |
-| DNS rebinding       | Every request must carry a loopback `Host` header.                                                                                                               |
-| Session link        | Random 128-bit session id; 256-bit one-time pairing code in the URL _fragment_ (not sent to the server, not in `Referer`), removed from the address bar on load. |
-| Browser API         | Bearer token from the pairing exchange, same-origin `Origin` required (CSRF), strict CSP, no third-party code.                                                   |
-| Tool RPC endpoint   | 256-bit token in the path; rejects any request that carries browser headers.                                                                                     |
-| Approval integrity  | Requests are bound to session, account, chain and payload hash; the broadcast transaction is fetched and compared with what was approved.                        |
-| Replays and retries | Results are accepted once per request; retried sends get the original outcome, never a new approval.                                                             |
+| Surface             | Protection                                                                                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network exposure    | Binds `127.0.0.1` only; never `0.0.0.0`. Remote use goes through SSH port forwarding.                                                                                  |
+| DNS rebinding       | Every request must carry a loopback `Host` header.                                                                                                                     |
+| Session link        | Random 128-bit session id; 256-bit **single-use** pairing code in the URL _fragment_ (not sent to the server, not in `Referer`), removed from the address bar on load. |
+| Browser API         | Bearer token from the pairing exchange, same-origin `Origin` required (CSRF), strict CSP, no third-party code.                                                         |
+| Tool RPC endpoint   | 256-bit token in the path, passed to forge in its environment (not its arguments); rejects browser requests; forwards only read methods.                               |
+| Approval integrity  | Requests are bound to session, account, chain and payload hash; the broadcast transaction is fetched and compared with what was approved.                              |
+| Replays and retries | Results are accepted once per request; hashes are released only after verification; retried sends get the original outcome, never a new approval.                      |
 
 Full threat model and known limitations: [docs/guides/security.md](docs/guides/security.md) and
 [docs/research/security-considerations.md](docs/research/security-considerations.md). This is an
-automated and self-reviewed design, **not** an independent professional audit.
+automated and self-reviewed design that has also had an independent code review (all findings
+fixed, see the threat model), but **not** a professional security audit.
 
 ## Compatibility
 

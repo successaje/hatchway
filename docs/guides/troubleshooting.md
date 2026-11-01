@@ -7,8 +7,8 @@ Start with `hatchway doctor --rpc-url <your-endpoint>`; it checks most of the be
 
 | Symptom                                  | Cause and fix                                                                                                                                                  |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "No browser wallet found"                | The link was opened in a browser without a wallet extension. Open the terminal's link in the browser where MetaMask/Rabby is installed.                        |
-| "This link can't be used"                | The link was already used by another tab after a wallet was connected. Use that tab, or close it and use the fresh link the terminal prints.                   |
+| "No browser wallet found"                | The link was opened in a browser without a wallet extension. Click **Get a link for another browser** and open that link where MetaMask/Rabby is installed.    |
+| "This link can't be used"                | Session links work once. Use the tab that opened it first, or close that tab: the terminal prints a fresh link after a few seconds.                            |
 | "Session opened elsewhere"               | Another tab claimed the session. Use the newest tab.                                                                                                           |
 | "Lost connection to your terminal"       | The command stopped (Ctrl+C, crash, finished). Check the terminal; rerun if needed.                                                                            |
 | "Check your wallet" / wrong network      | The wallet is on another chain. Click **Switch to …**, or change it in the wallet. If the chain is unknown to the wallet, add it (chain id and RPC are shown). |

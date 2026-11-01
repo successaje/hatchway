@@ -31,8 +31,8 @@ Other limits: a wallet must connect within 15 minutes; each request must be appr
 ## `hatchway forge`
 
 Runs `forge script` with the wallet as the sender. All arguments after the script path go to
-forge. Hatchway adds `--rpc-url <bridge> --unlocked --sender <wallet> --slow` and sets
-`ETH_RPC_TIMEOUT`. Refuses `--private-key(s)`, `--mnemonic*`, `--keystore(s)`, `--account(s)`,
+forge. Hatchway removes any `--rpc-url`, adds `--unlocked --sender <wallet> --slow`, and sets
+`ETH_RPC_URL` (the bridge) and `ETH_RPC_TIMEOUT` in forge's environment. Refuses `--private-key(s)`, `--mnemonic*`, `--keystore(s)`, `--account(s)`,
 `--password*`, `--ledger`, `--trezor`, `--aws`, `--gcp`, `--turnkey`, `--browser`,
 `-i/--interactive(s)`, `--multi` and `--debug`. If `--sender` is given, only that account is
 accepted.
@@ -61,8 +61,9 @@ Libraries that need linking are not supported here; use a script.
 Connects a wallet and prints a local JSON-RPC endpoint (`http://127.0.0.1:<port>/rpc/<token>`)
 until Ctrl+C. The endpoint answers `eth_accounts` with the wallet address, sends
 `eth_sendTransaction`/`personal_sign`/`eth_signTypedData_v4` for approval, and forwards
-everything else to `--rpc-url`. It refuses `eth_sign`, `eth_signTransaction`,
-`eth_sendRawTransaction` and `wallet_*` methods.
+read methods (`eth_*`, `net_*`, `web3_*`, `debug_trace*`, `trace_*`) to `--rpc-url`. It refuses
+`eth_sign`, `eth_signTransaction`, every raw-send variant, `wallet_*`, `personal_*` and
+dev-node admin methods (`anvil_*`, `hardhat_*`, `evm_*`). Batches are limited to 100 requests.
 
 ## `hatchway doctor`
 

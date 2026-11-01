@@ -25,7 +25,8 @@ after you approve it there. Connecting a wallet only shares its address.
   name (blocks DNS rebinding).
 - The session link carries a one-time pairing code in the URL fragment, which browsers never
   send to servers or in `Referer`. The page removes it from the address bar on load and trades
-  it for a token kept in that tab only. Once a wallet is connected, the link stops working.
+  it for a token kept in that tab only. The link works once; a tab without a wallet can mint a
+  one-time link for another browser.
 - Every browser API call needs that token and a same-origin `Origin` header (blocks CSRF).
 - The page loads only bundled files under a strict Content Security Policy: no remote
   scripts, no analytics, no trackers, no frames.

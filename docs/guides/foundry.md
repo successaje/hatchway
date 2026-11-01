@@ -22,9 +22,11 @@ hatchway forge script/Deploy.s.sol:Deploy --rpc-url sepolia --broadcast --verify
 3. Hatchway runs:
 
    ```text
-   forge script <your args> --rpc-url <local bridge> --unlocked --sender <wallet> --slow
+   ETH_RPC_URL=<local bridge> forge script <your args> --unlocked --sender <wallet> --slow
    ```
 
+   (Your own `--rpc-url` is removed from forge's arguments; the bridge URL, which contains a
+   secret token, goes in the environment so other users cannot see it in the process list.)
    Forge compiles, simulates and estimates as usual. Each `eth_sendTransaction` appears on the
    page, decoded; you confirm it in the wallet; forge receives the hash and waits for the
    receipt itself.

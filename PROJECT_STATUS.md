@@ -26,15 +26,17 @@ verified end to end on Anvil with a deterministic test wallet, and across platfo
 - Examples: `examples/foundry` (5 scripts), `examples/hardhat-basic` (ethers, signing,
   Ignition).
 - Docs: README, 11 guides, 3 references, research, threat model, ADRs.
+- Independent security review (2026-11-01): 11 findings plus informational items, all fixed
+  with regression tests; see docs/research/security-considerations.md.
 - CI (all green on 2026-11-01), release workflow with npm trusted publishing, Dependabot.
 
 ## Latest verification (2026-11-01)
 
 | Suite                                                                                                  | Result | Where                                                                             |
 | ------------------------------------------------------------------------------------------------------ | ------ | --------------------------------------------------------------------------------- |
-| Unit + security (96 tests)                                                                             | Pass   | Local macOS arm64; CI Linux x64/arm64, macOS arm64/x64, Windows x64; Node 22 & 24 |
-| Integration: forge (12), Hardhat (7), engine (10), commands (8), forge timeout (1), packed tarball (3) | Pass   | Local (forge 1.6.0-nightly); CI Linux + macOS (forge stable)                      |
-| Browser E2E (Playwright, 11 tests)                                                                     | Pass   | Local; CI Linux                                                                   |
+| Unit + security (103 tests)                                                                            | Pass   | Local macOS arm64; CI Linux x64/arm64, macOS arm64/x64, Windows x64; Node 22 & 24 |
+| Integration: forge (13), Hardhat (8), engine (14), commands (8), forge timeout (1), packed tarball (3) | Pass   | Local (forge 1.6.0-nightly); CI Linux + macOS (forge stable)                      |
+| Browser E2E (Playwright, 12 tests)                                                                     | Pass   | Local; CI Linux                                                                   |
 | Lint, Prettier, TypeScript strict, build                                                               | Pass   | Local and CI                                                                      |
 | Production dependency audit                                                                            | Pass   | CI (one documented ignore: GHSA-mrhx-c7xc-m3w5)                                   |
 

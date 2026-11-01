@@ -32,5 +32,19 @@ First release candidate (not yet published to npm).
 - Unit, security, integration (forge, Hardhat, anvil, packed tarball) and Playwright tests;
   CI for Linux, macOS and Windows; release workflow with npm trusted publishing.
 
+### Security
+
+Hardening from an independent review before release (details in
+`docs/research/security-considerations.md`):
+
+- Transaction hashes are released only after the broadcast is verified; fabricated, reused or
+  older-transaction hashes are rejected; contents are re-checked when a late transaction appears.
+- Only read RPC methods are forwarded; every send/sign variant is refused, including from
+  Hardhat scripts signing with a local key.
+- Session links are single-use, with an authenticated handoff link for another browser.
+- The bridge URL is passed to forge through its environment, not its arguments; run records and
+  terminal output are scrubbed of credentials and terminal escape sequences.
+- A wallet broadcast after a withdrawn request is detected and stops the run.
+
 [Unreleased]: https://github.com/successaje/hatchway/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/successaje/hatchway/releases/tag/v0.1.0

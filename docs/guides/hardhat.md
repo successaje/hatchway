@@ -78,3 +78,5 @@ reverts, and installation from the npm tarball into a clean project.
 - One network per session.
 - Ignition refuses to continue when the account has pending transactions it did not send;
   avoid using the wallet for other things during a deployment.
+- While the plugin is active, transactions signed in the script with a local key
+  (`new ethers.Wallet(key, provider)`) are refused: everything must be approved in the wallet.

@@ -14,8 +14,9 @@ in `hardhat.config.ts`. It has no options and adds no tasks, global options or c
   untouched.
 - When active, for **HTTP networks**, these methods are answered by the Hatchway session
   instead of the network: `eth_accounts`, `eth_requestAccounts`, `eth_sendTransaction`,
-  `personal_sign`, `eth_signTypedData_v4` (and `eth_sign`, `eth_signTypedData`,
-  `eth_signTypedData_v3`, `eth_signTransaction`, which are refused with an explanation).
+  `personal_sign`, `eth_signTypedData_v4`. Every other method that sends or signs (for example
+  `eth_sendRawTransaction` from a script using a local key) is routed to the session too and
+  refused, so nothing reaches the chain without wallet approval.
 - On the first such call for a network connection, the plugin sends the resolved URL and HTTP
   headers of that network to the session, which uses it for simulation, verification and
   receipts. A session serves one network.

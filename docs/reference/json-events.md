@@ -3,18 +3,19 @@
 With `--json`, stdout carries one JSON object per line. Every object has an `event` field. New
 fields may be added in minor versions; existing fields keep their meaning.
 
-| `event`        | When                                                      | Fields                                                                                                                  |
-| -------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `session`      | Session started, or a reconnect link                      | `url`, `port`, `expiresAt` (ISO time) · `reconnect: true` for a fresh link after the tab closed                         |
-| `wallet`       | A wallet account was bound                                | `address`, `chainId`, `wallet` (display name)                                                                           |
-| `wallet_issue` | Wallet on wrong chain/account/disconnected                | `issue` (`wrong_chain` \| `wrong_account` \| `disconnected`), `message`                                                 |
-| `ready`        | `connect` only: endpoint available                        | `rpcUrl` (contains a secret token), `address`, `chainId`                                                                |
-| `request`      | A request is shown for review                             | `index`, `kind` (`transaction` \| `signature`), `title`, `action`, `simulation` (`passed` \| `failed` \| `unavailable`) |
-| `submitted`    | The wallet broadcast a transaction                        | `index`, `hash`                                                                                                         |
-| `confirmed`    | Mined successfully, or signed                             | `index`, `state`, `hash?`, `contractAddress?`, `blockNumber?`                                                           |
-| `failed`       | Rejected, reverted, expired, withdrawn, integrity failure | `index`, `state`, `hash?`, `code`, `message`                                                                            |
-| `error`        | A command-level error                                     | `code`, `message`, `hint?`                                                                                              |
-| `result`       | Last line                                                 | `ok`, `exitCode`, `chainId?`, `wallet?`, `transactions`, `runRecord?`, `broadcastFile?` (forge), `error?`               |
+| `event`          | When                                                      | Fields                                                                                                                  |
+| ---------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `session`        | Session started, or a reconnect link                      | `url`, `port`, `expiresAt` (ISO time) · `reconnect: true` for a fresh link after the tab closed                         |
+| `wallet`         | A wallet account was bound                                | `address`, `chainId`, `wallet` (display name)                                                                           |
+| `wallet_issue`   | Wallet on wrong chain/account/disconnected                | `issue` (`wrong_chain` \| `wrong_account` \| `disconnected`), `message`                                                 |
+| `ready`          | `connect` only: endpoint available                        | `rpcUrl` (contains a secret token), `address`, `chainId`                                                                |
+| `request`        | A request is shown for review                             | `index`, `kind` (`transaction` \| `signature`), `title`, `action`, `simulation` (`passed` \| `failed` \| `unavailable`) |
+| `submitted`      | The wallet broadcast a transaction                        | `index`, `hash`                                                                                                         |
+| `confirmed`      | Mined successfully, or signed                             | `index`, `state`, `hash?`, `contractAddress?`, `blockNumber?`                                                           |
+| `failed`         | Rejected, reverted, expired, withdrawn, integrity failure | `index`, `state`, `hash?`, `code`, `message`                                                                            |
+| `late_broadcast` | The wallet sent a request after it was withdrawn          | `index`, `hash`                                                                                                         |
+| `error`          | A command-level error                                     | `code`, `message`, `hint?`                                                                                              |
+| `result`         | Last line                                                 | `ok`, `exitCode`, `chainId?`, `wallet?`, `transactions`, `runRecord?`, `broadcastFile?` (forge), `error?`               |
 
 `transactions` entries:
 
