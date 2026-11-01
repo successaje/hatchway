@@ -119,11 +119,20 @@ export async function buildTransactionReview(
         decoded = decodeCall([candidate.fn], tx.data);
         if (decoded) {
           const names = new Set(candidates.map((c) => c.entry.name));
-          if (!known && names.size === 1) {
-            review.contractName = candidate.entry.name;
+          const implementation = names.size === 1 ? candidate.entry.name : undefined;
+          if (known && implementation && implementation !== known.name) {
+            // The target was deployed in this session but does not have this function itself:
+            // typically a proxy forwarding to an implementation.
+            review.contractName = implementation;
             review.contractSource = "selector";
+            notices.push({ level: "info", message: `Called through ${known.name}; decoded with ${implementation}'s ABI.` });
+          } else {
+            if (!known && implementation) {
+              review.contractName = implementation;
+              review.contractSource = "selector";
+            }
+            notices.push({ level: "info", message: "Decoded by matching the function selector against project ABIs." });
           }
-          notices.push({ level: "info", message: "Decoded by matching the function selector against project ABIs." });
           break;
         }
       }

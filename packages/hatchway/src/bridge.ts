@@ -43,7 +43,7 @@ export class Bridge {
   readonly #projectRoot: string | undefined;
   #upstream: UpstreamRpc | undefined;
   #artifacts: Promise<ArtifactIndex> | undefined;
-  #closed = false;
+  #closing: Promise<void> | undefined;
 
   private constructor(options: BridgeOptions) {
     this.#projectRoot = options.projectRoot;
@@ -151,16 +151,15 @@ export class Bridge {
     return { chainId };
   }
 
-  async close(
-    state: "completed" | "cancelled" | "expired" | "failed" = "completed",
-    reason?: string,
-  ): Promise<void> {
-    if (this.#closed) return;
-    this.#closed = true;
-    this.session.end(state, reason);
-    // Give the page a moment to receive the final state before connections drop.
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    await this.engine.stop();
-    await this.#server.close();
+  /** Ends the session and stops the server. Safe to call more than once; later calls wait for the first. */
+  close(state: "completed" | "cancelled" | "expired" | "failed" = "completed", reason?: string): Promise<void> {
+    this.#closing ??= (async () => {
+      this.session.end(state, reason);
+      // Give the page a moment to receive the final state before connections drop.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await this.engine.stop();
+      await this.#server.close();
+    })();
+    return this.#closing;
   }
 }
