@@ -7,6 +7,16 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # typescript-eslint 8.72 supports TypeScript <6.1.
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
+      # @preact/preset-vite 2.10 requires Babel 7.
+      - dependency-name: "@babel/core"
+        update-types: ["version-update:semver-major"]
+      # Node type definitions follow the supported Node.js versions, not the newest release.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

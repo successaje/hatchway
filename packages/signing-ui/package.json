@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "preact": "10.29.8"
+    "preact": "11.1.0"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
