@@ -79,5 +79,11 @@ out`. Source reading suggests newer forge builds honour `--rpc-timeout` for unlo
 | `--debug`                                         | Unsupported           | Debugger cannot be combined with wallet signing                          |
 | zkSync-style chains                               | Unsupported           | Non-standard deployment transactions                                     |
 
-Verified forge version: **1.6.0-nightly (commit 5e88010, 2026-04-27)**. CI runs the latest
-stable forge.
+Verified forge versions: **1.6.0-nightly (commit 5e88010, 2026-04-27)** locally and **1.8.7**
+(stable) in CI, Linux and macOS.
+
+Version note: Hatchway passes the bridge URL in forge's environment rather than its arguments
+(the URL carries a token). The 1.6 nightly reads `ETH_RPC_URL`; forge 1.8.7 ran without the
+bridge when only `ETH_RPC_URL` was set, and works with `FOUNDRY_ETH_RPC_URL` (the config-level
+override), so both are set. The integration suite checks that forge's process arguments do not
+contain the token and that the bridge wins over an `eth_rpc_url` in `foundry.toml`.

@@ -32,7 +32,8 @@ Other limits: a wallet must connect within 15 minutes; each request must be appr
 
 Runs `forge script` with the wallet as the sender. All arguments after the script path go to
 forge. Hatchway removes any `--rpc-url`, adds `--unlocked --sender <wallet> --slow`, and sets
-`ETH_RPC_URL` (the bridge) and `ETH_RPC_TIMEOUT` in forge's environment. Refuses `--private-key(s)`, `--mnemonic*`, `--keystore(s)`, `--account(s)`,
+`ETH_RPC_URL` and `FOUNDRY_ETH_RPC_URL` (the bridge) and `ETH_RPC_TIMEOUT` in forge's
+environment. Refuses `--private-key(s)`, `--mnemonic*`, `--keystore(s)`, `--account(s)`,
 `--password*`, `--ledger`, `--trezor`, `--aws`, `--gcp`, `--turnkey`, `--browser`,
 `-i/--interactive(s)`, `--multi` and `--debug`. If `--sender` is given, only that account is
 accepted.

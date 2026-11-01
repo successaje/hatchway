@@ -264,7 +264,7 @@ fixed, see the threat model), but **not** a professional security audit.
 
 | Area     | Verified                                                                                                                                                                                 |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundry  | forge 1.6.0-nightly (2026-04) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough                                                                                     |
+| Foundry  | forge 1.6.0-nightly (local) and 1.8.7 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough                                                                 |
 | Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                |
 | Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask/Rabby: manual test pending                                                                             |
 | Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`)                                                                                      |

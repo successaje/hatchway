@@ -22,7 +22,7 @@ hatchway forge script/Deploy.s.sol:Deploy --rpc-url sepolia --broadcast --verify
 3. Hatchway runs:
 
    ```text
-   ETH_RPC_URL=<local bridge> forge script <your args> --unlocked --sender <wallet> --slow
+   ETH_RPC_URL=<bridge> FOUNDRY_ETH_RPC_URL=<bridge> forge script <your args> --unlocked --sender <wallet> --slow
    ```
 
    (Your own `--rpc-url` is removed from forge's arguments; the bridge URL, which contains a
@@ -100,7 +100,7 @@ the current chain state. `--resume` is passed through to forge unchanged.
 | `--debug`                                                  | Unsupported    |                                                   |
 | zkSync and other non-standard deployment chains            | Unsupported    |                                                   |
 
-Verified with forge **1.6.0-nightly (2026-04-27)**; CI also runs the current stable release.
+Verified with forge **1.6.0-nightly (2026-04-27)** locally and **1.8.7** (stable) in CI.
 Background: [Foundry integration research](../research/foundry-integration.md).
 
 ## Foundry's own `--browser`
