@@ -30,14 +30,15 @@ Start with [docs/architecture/decisions.md](docs/architecture/decisions.md).
 
 ## Checks
 
-| Command                 | What it runs                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| `pnpm lint`             | ESLint                                                                          |
-| `pnpm format:check`     | Prettier (`pnpm format` to fix)                                                 |
-| `pnpm typecheck`        | TypeScript, strict                                                              |
-| `pnpm test`             | Unit and security tests (no external tools)                                     |
-| `pnpm test:integration` | Real forge, Hardhat and anvil; installs the packed tarball (needs a build)      |
-| `pnpm test:e2e`         | Playwright against the real page (`pnpm exec playwright install chromium` once) |
+| Command                              | What it runs                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `pnpm lint`                          | ESLint                                                                          |
+| `pnpm format:check`                  | Prettier (`pnpm format` to fix)                                                 |
+| `pnpm typecheck`                     | TypeScript, strict                                                              |
+| `pnpm test`                          | Unit and security tests (no external tools)                                     |
+| `pnpm test:integration`              | Real forge, Hardhat and anvil; installs the packed tarball (needs a build)      |
+| `pnpm test:e2e`                      | Playwright against the real page (`pnpm exec playwright install chromium` once) |
+| `UPDATE_SCREENSHOTS=1 pnpm test:e2e` | Same, and refreshes the screenshots in `docs/assets/screenshots`                |
 
 `pnpm check` runs lint, format, types, build and unit tests. CI runs everything on Linux and
 macOS, and unit tests on Windows.

@@ -6,6 +6,12 @@ import { FOUNDRY_EXAMPLE, runCli, type CliRun } from "../packages/hatchway/test/
 import { TestWallet } from "./test-wallet.js";
 
 const SHOTS = "docs/assets/screenshots";
+
+/** Documentation screenshots are only (re)written when UPDATE_SCREENSHOTS=1. */
+async function shot(page: Page, name: string, options: { fullPage?: boolean } = {}): Promise<void> {
+  if (process.env.UPDATE_SCREENSHOTS !== "1") return;
+  await page.screenshot({ path: `${SHOTS}/${name}.png`, animations: "disabled", ...options });
+}
 let anvil: Anvil;
 const runs: CliRun[] = [];
 
@@ -55,26 +61,18 @@ test("deploys a contract: connect, review, approve in wallet, confirm", async ({
   await expect(page.getByRole("button", { name: /Test Wallet/ })).toBeVisible();
   // The pairing code is removed from the address bar immediately.
   expect(new URL(page.url()).hash).toBe("");
-  await page.screenshot({ path: `${SHOTS}/connect-light.png`, animations: "disabled" });
+  await shot(page, "connect-light");
 
   await page.getByRole("button", { name: /Test Wallet/ }).click();
   await expect(page.getByRole("heading", { name: "Deploy HatchToken" })).toBeVisible();
   await expect(page.getByText("Simulation passed")).toBeVisible();
   await expect(page.getByText('"Hatch Token"')).toBeVisible();
   await expect(page.getByText("Contract creation")).toBeVisible();
-  await page.screenshot({
-    path: `${SHOTS}/review-light.png`,
-    fullPage: true,
-    animations: "disabled",
-  });
+  await shot(page, "review-light", { fullPage: true });
 
   await page.getByRole("button", { name: "Confirm in Test Wallet" }).click();
   await expect(page.getByRole("heading", { name: "All done" })).toBeVisible();
-  await page.screenshot({
-    path: `${SHOTS}/done-light.png`,
-    fullPage: true,
-    animations: "disabled",
-  });
+  await shot(page, "done-light", { fullPage: true });
 
   expect(await run.exited).toBe(0);
   const [tx] = run.result()!.transactions as { contractAddress: `0x${string}` }[];
@@ -87,21 +85,13 @@ test("dark theme and narrow screens render the review screen", async ({ page }) 
   const run = deploy();
   await openWithWallet(page, await run.sessionUrl);
   await expect(page.getByRole("heading", { name: "Connect your wallet" })).toBeVisible();
-  await page.screenshot({ path: `${SHOTS}/connect-dark.png`, animations: "disabled" });
+  await shot(page, "connect-dark");
   await page.getByRole("button", { name: /Test Wallet/ }).click();
   await expect(page.getByRole("heading", { name: "Deploy HatchToken" })).toBeVisible();
-  await page.screenshot({
-    path: `${SHOTS}/review-dark.png`,
-    fullPage: true,
-    animations: "disabled",
-  });
+  await shot(page, "review-dark", { fullPage: true });
 
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.screenshot({
-    path: `${SHOTS}/review-mobile-dark.png`,
-    fullPage: true,
-    animations: "disabled",
-  });
+  await shot(page, "review-mobile-dark", { fullPage: true });
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
@@ -126,7 +116,7 @@ test("shows guidance when no wallet is installed", async ({ page }) => {
   const run = deploy();
   await page.goto(await run.sessionUrl);
   await expect(page.getByText("No browser wallet found")).toBeVisible();
-  await page.screenshot({ path: `${SHOTS}/no-wallet-light.png`, animations: "disabled" });
+  await shot(page, "no-wallet-light");
   run.child.kill("SIGINT");
   await run.exited;
 });
@@ -153,7 +143,7 @@ test("asks to switch networks and continues once the wallet is on the right chai
   await expect(
     page.getByText("This session deploys to Local (Anvil/Hardhat) (chain 31337)."),
   ).toBeVisible();
-  await page.screenshot({ path: `${SHOTS}/wrong-network-light.png`, animations: "disabled" });
+  await shot(page, "wrong-network-light");
   // The chain is unknown to the wallet, so the page offers to add it (loopback RPC only).
   await page.getByRole("button", { name: /Switch to Local/ }).click();
   await expect(page.getByRole("heading", { name: "Deploy HatchToken" })).toBeVisible();
