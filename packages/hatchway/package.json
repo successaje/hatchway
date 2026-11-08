@@ -54,7 +54,7 @@
   "dependencies": {
     "open": "11.0.4",
     "picocolors": "1.1.1",
-    "viem": "2.57.14"
+    "viem": "2.57.16"
   },
   "peerDependencies": {
     "hardhat": "^3.0.0"
