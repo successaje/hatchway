@@ -66,8 +66,8 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       viem:
-        specifier: 2.57.14
-        version: 2.57.14(typescript@6.0.3)(zod@3.25.76)
+        specifier: 2.57.16
+        version: 2.57.16(typescript@6.0.3)(zod@3.25.76)
     devDependencies:
       '@hatchway/signing-ui':
         specifier: workspace:*
@@ -1663,11 +1663,14 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  viem@2.57.14:
-    resolution: {integrity: sha512-ctaSyx3I24va98H2PYz8C30FKXXo8Th/H6Wrn7za7N+RuPQHiL09zFedX6GZDCtz73YFLrf7YeVOgU5CUVByng==}
+  viem@2.57.16:
+    resolution: {integrity: sha512-+4uaUw3NfkqjaqsZp8Zci94K33oc9rv7mIUgvPduJxsY/tI0ASi2YkaXoUVSBGfdIw/QPWuVnIf9LTFf35IoMg==}
     peerDependencies:
+      mppx: '>=0.17.0'
       typescript: '>=5.0.4'
     peerDependenciesMeta:
+      mppx:
+        optional: true
       typescript:
         optional: true
 
@@ -3311,7 +3314,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  viem@2.57.14(typescript@6.0.3)(zod@3.25.76):
+  viem@2.57.16(typescript@6.0.3)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
