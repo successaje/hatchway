@@ -88,15 +88,15 @@ importers:
   packages/signing-ui:
     dependencies:
       preact:
-        specifier: 11.1.0
-        version: 11.1.0
+        specifier: 11.1.1
+        version: 11.1.1
     devDependencies:
       '@babel/core':
         specifier: 7.29.7
         version: 7.29.7
       '@preact/preset-vite':
         specifier: 2.10.6
-        version: 2.10.6(@babel/core@7.29.7)(preact@11.1.0)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
+        version: 2.10.6(@babel/core@7.29.7)(preact@11.1.1)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -1492,8 +1492,8 @@ packages:
     resolution: {integrity: sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A==}
     engines: {node: '>=20'}
 
-  preact@11.1.0:
-    resolution: {integrity: sha512-hz1VsjWx5pSYPDVEzb9w+XyOmQpP1qW/ZEaMiYm+C8ykJr8KP+TKGZIbCW0QmZ/Yr/jg3XkZoziEWn9iWHZ9Mw==}
+  preact@11.1.1:
+    resolution: {integrity: sha512-vpFVfai437pbuLri7XVeslCPfrEZX6Z1S2gV+MOFrA/kji+NKUXvH7y01EnVjA1guLigfkVp77Sqipd4SIllCg==}
     peerDependencies:
       preact-render-to-string: '>=6.7.0'
     peerDependenciesMeta:
@@ -2327,12 +2327,12 @@ snapshots:
     dependencies:
       playwright: 1.64.1
 
-  '@preact/preset-vite@2.10.6(@babel/core@7.29.7)(preact@11.1.0)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))':
+  '@preact/preset-vite@2.10.6(@babel/core@7.29.7)(preact@11.1.1)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx': 7.29.7(@babel/core@7.29.7)
       '@babel/plugin-transform-react-jsx-development': 7.29.7(@babel/core@7.29.7)
-      '@prefresh/vite': 2.4.12(preact@11.1.0)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
+      '@prefresh/vite': 2.4.12(preact@11.1.1)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
       '@rollup/pluginutils': 5.5.1
       babel-plugin-transform-hook-names: 1.0.2(@babel/core@7.29.7)
       debug: 4.4.3
@@ -2350,20 +2350,20 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
 
-  '@prefresh/core@1.5.11(preact@11.1.0)':
+  '@prefresh/core@1.5.11(preact@11.1.1)':
     dependencies:
-      preact: 11.1.0
+      preact: 11.1.1
 
   '@prefresh/utils@1.2.1': {}
 
-  '@prefresh/vite@2.4.12(preact@11.1.0)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))':
+  '@prefresh/vite@2.4.12(preact@11.1.1)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))':
     dependencies:
       '@babel/core': 7.29.7
       '@prefresh/babel-plugin': 0.5.4(@babel/core@7.29.7)
-      '@prefresh/core': 1.5.11(preact@11.1.0)
+      '@prefresh/core': 1.5.11(preact@11.1.1)
       '@prefresh/utils': 1.2.1
       '@rollup/pluginutils': 4.2.1
-      preact: 11.1.0
+      preact: 11.1.1
       vite: 8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)
     transitivePeerDependencies:
       - supports-color
@@ -3161,7 +3161,7 @@ snapshots:
 
   powershell-utils@0.2.1: {}
 
-  preact@11.1.0: {}
+  preact@11.1.1: {}
 
   prelude-ls@1.2.1: {}
 
