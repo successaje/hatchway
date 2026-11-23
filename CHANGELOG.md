@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format follows
   Etherscan, Blockscout and others, with keys from forge's usual environment variables or
   `foundry.toml`). A failed verification leaves the deployment in place, exits with the new
   code 11 (`VERIFICATION_FAILED`) and prints the command to retry.
+- `hatchway deploy --rpc-url` accepts `foundry.toml` `rpc_endpoints` aliases in Foundry projects,
+  as `hatchway forge` does.
 - A guide to verifying contracts with `deploy`, `forge … --verify` and Hardhat.
 
 ## [0.1.0] - 2026-11-01

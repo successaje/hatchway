@@ -59,7 +59,7 @@ Usage
   hatchway deploy [options] <Contract | path/to/Artifact.json> --rpc-url <url> [--args <arg>…]
 
 Options
-  --rpc-url <url>     RPC endpoint (or ETH_RPC_URL)
+  --rpc-url <url>     RPC endpoint or foundry.toml alias (or ETH_RPC_URL)
   --args <arg>…       Constructor arguments; must come last. Arrays/tuples as JSON
   --value <amount>    Native value to send, e.g. 0.1ether or 20gwei
   --from <address>    Require this wallet address

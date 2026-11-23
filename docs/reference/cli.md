@@ -45,18 +45,18 @@ plugin and `--network` (or `HARDHAT_NETWORK`).
 
 ## `hatchway deploy`
 
-| Option                 | Meaning                                                                 |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `<Contract>`           | Contract name, `path/File.sol:Name`, or a path to an artifact JSON file |
-| `--rpc-url <url>`      | RPC endpoint (or `ETH_RPC_URL`)                                         |
-| `--args <arg>…`        | Constructor arguments, **last** on the line. Arrays/tuples as JSON      |
-| `--value <amount>`     | Native value: `0.1ether`, `20gwei`, or wei                              |
-| `--from <address>`     | Require this wallet account                                             |
-| `--no-build`           | Skip `forge build` / `hardhat build`                                    |
-| `--root <dir>`         | Project directory                                                       |
-| `--verify`             | Verify the source after deploying (Foundry projects)                    |
-| `--verifier <name>`    | `sourcify` (default), `etherscan`, `blockscout`, … for `--verify`       |
-| `--verifier-url <url>` | The verifier's API URL                                                  |
+| Option                 | Meaning                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `<Contract>`           | Contract name, `path/File.sol:Name`, or a path to an artifact JSON file        |
+| `--rpc-url <url>`      | RPC endpoint, or a `foundry.toml` alias in Foundry projects (or `ETH_RPC_URL`) |
+| `--args <arg>…`        | Constructor arguments, **last** on the line. Arrays/tuples as JSON             |
+| `--value <amount>`     | Native value: `0.1ether`, `20gwei`, or wei                                     |
+| `--from <address>`     | Require this wallet account                                                    |
+| `--no-build`           | Skip `forge build` / `hardhat build`                                           |
+| `--root <dir>`         | Project directory                                                              |
+| `--verify`             | Verify the source after deploying (Foundry projects)                           |
+| `--verifier <name>`    | `sourcify` (default), `etherscan`, `blockscout`, … for `--verify`              |
+| `--verifier-url <url>` | The verifier's API URL                                                         |
 
 Libraries that need linking are not supported here; use a script. Verification runs
 `forge verify-contract` once the deployment is confirmed; see

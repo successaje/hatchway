@@ -8,7 +8,7 @@ import {
   type Abi,
   type Hex,
 } from "viem";
-import { findFoundryRoot, foundryMissing } from "../../adapters/foundry.js";
+import { findFoundryRoot, foundryMissing, resolveForgeRpc } from "../../adapters/foundry.js";
 import { findHardhatConfig, locateHardhat } from "../../adapters/hardhat.js";
 import { runTool, type RunningTool } from "../../adapters/process.js";
 import { ExitCode, HatchwayError } from "../../core/errors.js";
@@ -61,8 +61,8 @@ export async function deployCommand(
   }
   const target = rest[0]!;
 
-  const rpcUrl = (options["rpc-url"] as string | undefined) ?? process.env.ETH_RPC_URL;
-  if (!rpcUrl)
+  const rpcOption = options["rpc-url"] as string | undefined;
+  if (!rpcOption && !process.env.ETH_RPC_URL)
     throw new HatchwayError("USAGE", "No RPC endpoint given.", {
       hint: "Pass --rpc-url <url> or set ETH_RPC_URL.",
     });
@@ -76,6 +76,11 @@ export async function deployCommand(
   const start = resolve((options.root as string | undefined) ?? process.cwd());
   const { root, framework } = detectProject(start, target);
   if (verify && framework !== "foundry") throw cannotVerify(framework);
+  // In a Foundry project, --rpc-url also accepts foundry.toml's rpc_endpoints aliases, as forge does.
+  const rpcUrl =
+    framework === "foundry"
+      ? await resolveForgeRpc(rpcOption, root)
+      : (rpcOption ?? process.env.ETH_RPC_URL!);
 
   reporter.header(`deploy ${target}`);
   if (framework && options.build !== false) await build(framework, root, reporter);

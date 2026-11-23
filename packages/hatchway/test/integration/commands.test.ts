@@ -172,6 +172,24 @@ describe("hatchway deploy", () => {
     expect(stray.result.error).toMatchObject({ code: "USAGE" });
   });
 
+  it("resolves --rpc-url aliases from foundry.toml, as forge does", async () => {
+    const run = runCli(
+      ["deploy", "--json", "--no-open", "--no-build", "--rpc-url", "sepolia", "Counter"],
+      {
+        cwd: FOUNDRY_EXAMPLE,
+        env: { SEPOLIA_RPC_URL: anvil.url },
+      },
+    );
+    const wallet = await HeadlessWallet.open({
+      sessionUrl: await run.sessionUrl,
+      nodeUrl: anvil.url,
+      address: deployer,
+    });
+    expect(await run.exited, run.stderr()).toBe(0);
+    wallet.close();
+    expect(txs(run.result()!)[0]!.state).toBe("confirmed");
+  });
+
   it("requires --from to match the connected wallet", async () => {
     const run = runCli(
       [
