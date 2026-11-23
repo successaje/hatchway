@@ -2,15 +2,19 @@ import { basename, relative } from "node:path";
 import { getAddress, isAddress } from "viem";
 import {
   buildForgeArgs,
+  checksUnfinishedBroadcasts,
   findBroadcastFile,
   findFoundryRoot,
+  findUnfinishedBroadcast,
   foundryMissing,
   forgeVersion,
   parseForgeArgs,
   resolveForgeRpc,
+  type ForgeInvocation,
 } from "../../adapters/foundry.js";
 import { runTool, type RunningTool } from "../../adapters/process.js";
 import { ExitCode, HatchwayError } from "../../core/errors.js";
+import { UpstreamRpc } from "../../evm/rpc.js";
 import { parseOptions, SESSION_OPTIONS } from "../args.js";
 import { HELP } from "../help.js";
 import type { Reporter } from "../output.js";
@@ -52,6 +56,8 @@ export async function forgeCommand(
     throw new HatchwayError("USAGE", `--sender ${invocation.sender} is not a valid address.`);
   }
   const upstreamUrl = await resolveForgeRpc(invocation.rpc, root);
+  if (checksUnfinishedBroadcasts(version))
+    await refuseUnfinishedBroadcast(invocation, root, upstreamUrl);
   const project = relative(process.cwd(), root) || basename(root);
   const title = `forge script ${invocation.script ?? ""}`.trim();
 
@@ -183,4 +189,39 @@ export async function forgeCommand(
   });
   await bridge.close(error ? (interrupted ? "cancelled" : "failed") : "completed", error?.message);
   return exitCode;
+}
+
+/**
+ * forge 1.10 and later will not broadcast a script again while its previous run is
+ * unfinished (it submitted something that never confirmed). Say so before the session opens,
+ * rather than after the wallet has connected and forge has simulated.
+ */
+async function refuseUnfinishedBroadcast(
+  invocation: ForgeInvocation,
+  root: string,
+  upstreamUrl: string,
+): Promise<void> {
+  if (!invocation.broadcast || invocation.resume || invocation.startFresh) return;
+  if (!invocation.script) return;
+  let chainId: number;
+  try {
+    chainId = await new UpstreamRpc(upstreamUrl, { timeoutMs: 10_000 }).chainId();
+  } catch {
+    return; // The session reports an unreachable or invalid endpoint properly.
+  }
+  const unfinished = await findUnfinishedBroadcast(
+    root,
+    invocation.script,
+    invocation.sig,
+    chainId,
+  );
+  if (!unfinished) return;
+  const script = basename(invocation.script.split(":")[0]!);
+  throw new HatchwayError(
+    "USAGE",
+    `The previous broadcast of ${script} on chain ${chainId} did not finish (${unfinished.confirmed} of ${unfinished.transactions} transactions confirmed), and forge will not run it again as it is.`,
+    {
+      hint: `Add --resume to send what is left (each transaction still goes to your wallet), or --start-fresh to archive ${relative(process.cwd(), unfinished.record)} and run the script anew. Before --start-fresh, check that none of its transactions is still pending.`,
+    },
+  );
 }

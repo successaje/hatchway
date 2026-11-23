@@ -36,7 +36,8 @@ forge. Hatchway removes any `--rpc-url`, adds `--unlocked --sender <wallet> --sl
 environment. Refuses `--private-key(s)`, `--mnemonic*`, `--keystore(s)`, `--account(s)`,
 `--password*`, `--ledger`, `--trezor`, `--aws`, `--gcp`, `--turnkey`, `--browser`,
 `-i/--interactive(s)`, `--multi` and `--debug`. If `--sender` is given, only that account is
-accepted.
+accepted. With forge 1.10 and later, a `--broadcast` run whose previous broadcast is unfinished
+stops before the session opens (exit code 2) unless `--resume` or `--start-fresh` is given.
 
 ## `hatchway hardhat`
 

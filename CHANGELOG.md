@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- With forge 1.10 and later, `hatchway forge … --broadcast` checks before opening the signing
+  page whether forge will refuse the run because the script's previous broadcast is unfinished
+  (for example after a rejection or Ctrl+C), and says how to continue with `--resume` or
+  `--start-fresh`, instead of failing after the wallet has connected.
+
 ## [0.1.0] - 2026-11-01
 
 First release, published to npm by hand (no `v0.1.0` tag or GitHub release).

@@ -7,10 +7,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, rpc, startAnvil, type Anvil } from "../helpers/anvil.js";
 import { clearBroadcasts, FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
 import { HeadlessWallet, type Decision } from "../helpers/headless-wallet.js";
+import { checksUnfinishedBroadcasts, forgeVersion } from "../../src/adapters/foundry.js";
 import type { RequestView } from "../../src/core/protocol.js";
 
 let anvil: Anvil;
 const deployer = ANVIL_ACCOUNTS[0];
+const refusesUnfinished = checksUnfinishedBroadcasts((await forgeVersion()) ?? "");
 
 beforeAll(async () => {
   execFileSync("forge", ["build"], { cwd: FOUNDRY_EXAMPLE, stdio: "ignore" });
@@ -374,5 +376,46 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     expect(await run.exited, run.stderr()).toBe(0);
     wallet.close();
     rmSync(project, { recursive: true, force: true });
+  });
+});
+
+describe.runIf(refusesUnfinished)("after an unfinished broadcast (forge 1.10 and later)", () => {
+  async function leaveUnfinished() {
+    const rejected = await forge("script/DeployCounter.s.sol", {
+      decide: () => ({ action: "reject" }),
+    });
+    expect(rejected.code).toBe(3);
+  }
+
+  it("stops before opening a session, then runs anew with --start-fresh", async () => {
+    await leaveUnfinished();
+    const again = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
+    expect(await again.exited, again.stderr()).toBe(2);
+    expect(again.events.map((e) => e.event)).not.toContain("session");
+    expect(again.result()!.error).toMatchObject({ code: "USAGE" });
+    expect(again.stderr()).toContain("did not finish (0 of 1 transactions confirmed)");
+    expect(again.stderr()).toContain("--start-fresh");
+
+    const fresh = await forge("script/DeployCounter.s.sol", { extra: ["--start-fresh"] });
+    expect(fresh.code, fresh.stderr).toBe(0);
+    expect(transactions(fresh.result)[0]!.state).toBe("confirmed");
+  });
+
+  it("sends what is left with --resume", async () => {
+    await leaveUnfinished();
+    const resumed = await forge("script/DeployCounter.s.sol", { extra: ["--resume"] });
+    expect(resumed.code, resumed.stderr).toBe(0);
+    expect(transactions(resumed.result).at(-1)!.state).toBe("confirmed");
   });
 });

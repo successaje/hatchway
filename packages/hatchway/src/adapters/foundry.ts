@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -59,6 +59,10 @@ export interface ForgeInvocation {
   broadcast: boolean;
   hasSlow: boolean;
   hasRpcTimeout: boolean;
+  /** `--sig`, which names forge's record of the run (`run()` when absent). */
+  sig: string | undefined;
+  resume: boolean;
+  startFresh: boolean;
 }
 
 function flagValue(
@@ -84,6 +88,9 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
     broadcast: false,
     hasSlow: false,
     hasRpcTimeout: false,
+    sig: undefined,
+    resume: false,
+    startFresh: false,
   };
   for (let i = 0; i < args.length; i++) {
     const token = args[i]!;
@@ -108,7 +115,13 @@ export function parseForgeArgs(input: readonly string[]): ForgeInvocation {
       const { value, consumed } = flagValue(args, i);
       result.root = value;
       i += consumed;
+    } else if (base === "--sig" || base === "-s") {
+      const { value, consumed } = flagValue(args, i);
+      result.sig = value;
+      i += consumed;
     } else if (base === "--broadcast") result.broadcast = true;
+    else if (base === "--resume") result.resume = true;
+    else if (base === "--start-fresh") result.startFresh = true;
     else if (base === "--slow") result.hasSlow = true;
     else if (base === "--rpc-timeout") result.hasRpcTimeout = true;
     else if (
@@ -161,6 +174,8 @@ export function findFoundryRoot(start: string): string | undefined {
 interface ForgeConfig {
   eth_rpc_url?: string | null;
   rpc_endpoints?: Record<string, string | { endpoint?: string; url?: string }>;
+  broadcast?: string;
+  cache_path?: string;
 }
 
 async function forgeConfig(root: string): Promise<ForgeConfig> {
@@ -238,6 +253,150 @@ export async function forgeVersion(): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/** forge 1.10 and later refuse to broadcast over an unfinished previous run of a script. */
+export function checksUnfinishedBroadcasts(version: string): boolean {
+  const match = /^(\d+)\.(\d+)\./.exec(version);
+  if (!match) return false;
+  const [major, minor] = [Number(match[1]), Number(match[2])];
+  return major > 1 || (major === 1 && minor >= 10);
+}
+
+/**
+ * The name forge gives a script's records (`<name>-latest.json`): the function name from
+ * `--sig`, or the selector when `--sig` is calldata.
+ */
+export function sigFileName(sig: string): string {
+  const paren = sig.indexOf("(");
+  if (paren !== -1) return sig.slice(0, paren);
+  const hex = sig.replace(/^0x/i, "");
+  if (/^(?:[0-9a-f]{2})+$/i.test(hex) && hex.length >= 8) return hex.slice(0, 8).toLowerCase();
+  return sig;
+}
+
+/** The parts of a forge broadcast sequence that say whether it finished. */
+interface ForgeSequence {
+  transactions?: { hash?: string | null }[];
+  receipts?: { transactionHash?: string }[];
+  reverted?: string[];
+  awaiting_owners?: unknown[];
+  recovery_generation?: string | null;
+  /** Multi-chain sequences hold one sequence per chain. */
+  deployments?: ForgeSequence[];
+}
+
+interface RecoverySnapshot {
+  deployments?: { attempts?: unknown[] }[];
+  data?: { sequence?: ForgeSequence };
+}
+
+export interface UnfinishedBroadcast {
+  /** forge's record of the previous run, the path forge names in its own refusal. */
+  record: string;
+  transactions: number;
+  confirmed: number;
+}
+
+function readJson<T>(path: string): T | undefined {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Applies forge's own test (`previous_unfinished` in forge 1.10's
+ * crates/script/src/recovery.rs) to the previous run of a script: forge refuses when that run
+ * submitted something and not every transaction has a receipt or is known to have reverted.
+ * The recovery snapshot next to the private half of the record decides when present, then
+ * the public record. Only a run forge would refuse is reported; anything that cannot be read
+ * is left for forge to judge.
+ */
+export function unfinishedBroadcast(input: {
+  broadcastDir: string;
+  cacheDir: string;
+  script: string;
+  sig: string | undefined;
+  chainId: number;
+}): UnfinishedBroadcast | undefined {
+  const file = `${sigFileName(input.sig ?? "run()")}-latest.json`;
+  const common = join(basename(input.script.split(":")[0]!), String(input.chainId));
+  const record = join(input.broadcastDir, common, file);
+  const snapshot = `${join(input.cacheDir, common, file)}.recovery.json`;
+  const pending = snapshot.replace(/\.json$/, ".pending");
+
+  // A run that stopped while saving leaves its newest snapshot pending; forge always refuses.
+  if (existsSync(pending)) {
+    return { record, ...progress(flatten(readJson<RecoverySnapshot>(pending)?.data?.sequence)) };
+  }
+  let sequences: ForgeSequence[];
+  let attempted = false;
+  let recoveryAware = false;
+  if (existsSync(snapshot)) {
+    const plan = readJson<RecoverySnapshot>(snapshot);
+    if (!plan?.data?.sequence) return undefined;
+    sequences = flatten(plan.data.sequence);
+    attempted = (plan.deployments ?? []).some((d) => (d.attempts?.length ?? 0) > 0);
+  } else {
+    const data = readJson<ForgeSequence>(record);
+    if (!data) return undefined;
+    sequences = flatten(data);
+    // A recovery-aware run whose snapshot is missing is refused whenever it is incomplete.
+    recoveryAware = sequences.some((s) => s.recovery_generation);
+  }
+
+  const { transactions, confirmed } = progress(sequences);
+  const submitted =
+    attempted ||
+    sequences.some(
+      (s) => (s.awaiting_owners?.length ?? 0) > 0 || (s.transactions ?? []).some((tx) => tx.hash),
+    );
+  return confirmed < transactions && (submitted || recoveryAware)
+    ? { record, transactions, confirmed }
+    : undefined;
+}
+
+function flatten(data: ForgeSequence | undefined): ForgeSequence[] {
+  if (!data) return [];
+  return Array.isArray(data.deployments) ? data.deployments : [data];
+}
+
+/** How many transactions the sequences hold, and how many have a receipt or are known reverts. */
+function progress(sequences: ForgeSequence[]): { transactions: number; confirmed: number } {
+  const same = (a: string | null | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
+  let transactions = 0;
+  let confirmed = 0;
+  for (const s of sequences) {
+    for (const { hash } of s.transactions ?? []) {
+      transactions += 1;
+      if (
+        hash &&
+        ((s.reverted ?? []).some((h) => same(h, hash)) ||
+          (s.receipts ?? []).some((r) => same(r.transactionHash, hash)))
+      )
+        confirmed += 1;
+    }
+  }
+  return { transactions, confirmed };
+}
+
+/** {@link unfinishedBroadcast} with the project's own `broadcast` and `cache_path` settings. */
+export async function findUnfinishedBroadcast(
+  root: string,
+  script: string,
+  sig: string | undefined,
+  chainId: number,
+): Promise<UnfinishedBroadcast | undefined> {
+  const config = await forgeConfig(root);
+  return unfinishedBroadcast({
+    broadcastDir: resolve(root, config.broadcast ?? "broadcast"),
+    cacheDir: resolve(root, config.cache_path ?? "cache"),
+    script,
+    sig,
+    chainId,
+  });
 }
 
 /** Finds the broadcast file forge wrote for this run, if any. */
