@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, startAnvil, type Anvil } from "../helpers/anvil.js";
-import { FOUNDRY_EXAMPLE, runCli } from "../helpers/cli.js";
+import { clearBroadcasts, FOUNDRY_EXAMPLE, runCli } from "../helpers/cli.js";
 import { HeadlessWallet } from "../helpers/headless-wallet.js";
 
 let anvil: Anvil;
@@ -10,6 +10,8 @@ beforeAll(async () => {
   execFileSync("forge", ["build"], { cwd: FOUNDRY_EXAMPLE, stdio: "ignore" });
   anvil = await startAnvil();
 });
+
+beforeEach(clearBroadcasts);
 
 afterAll(async () => {
   await anvil?.stop();

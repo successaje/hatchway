@@ -3,9 +3,9 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getAddress, parseAbi, type Address } from "viem";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, rpc, startAnvil, type Anvil } from "../helpers/anvil.js";
-import { FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
+import { clearBroadcasts, FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
 import { HeadlessWallet, type Decision } from "../helpers/headless-wallet.js";
 import type { RequestView } from "../../src/core/protocol.js";
 
@@ -16,6 +16,8 @@ beforeAll(async () => {
   execFileSync("forge", ["build"], { cwd: FOUNDRY_EXAMPLE, stdio: "ignore" });
   anvil = await startAnvil();
 });
+
+beforeEach(clearBroadcasts);
 
 afterAll(async () => {
   await anvil?.stop();
