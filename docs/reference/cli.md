@@ -47,17 +47,22 @@ plugin and `--network` (or `HARDHAT_NETWORK`).
 
 ## `hatchway deploy`
 
-| Option             | Meaning                                                                 |
-| ------------------ | ----------------------------------------------------------------------- |
-| `<Contract>`       | Contract name, `path/File.sol:Name`, or a path to an artifact JSON file |
-| `--rpc-url <url>`  | RPC endpoint (or `ETH_RPC_URL`)                                         |
-| `--args <arg>…`    | Constructor arguments, **last** on the line. Arrays/tuples as JSON      |
-| `--value <amount>` | Native value: `0.1ether`, `20gwei`, or wei                              |
-| `--from <address>` | Require this wallet account                                             |
-| `--no-build`       | Skip `forge build` / `hardhat build`                                    |
-| `--root <dir>`     | Project directory                                                       |
+| Option                 | Meaning                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `<Contract>`           | Contract name, `path/File.sol:Name`, or a path to an artifact JSON file        |
+| `--rpc-url <url>`      | RPC endpoint, or a `foundry.toml` alias in Foundry projects (or `ETH_RPC_URL`) |
+| `--args <arg>…`        | Constructor arguments, **last** on the line. Arrays/tuples as JSON             |
+| `--value <amount>`     | Native value: `0.1ether`, `20gwei`, or wei                                     |
+| `--from <address>`     | Require this wallet account                                                    |
+| `--no-build`           | Skip `forge build` / `hardhat build`                                           |
+| `--root <dir>`         | Project directory                                                              |
+| `--verify`             | Verify the source after deploying (Foundry projects)                           |
+| `--verifier <name>`    | `sourcify` (default), `etherscan`, `blockscout`, … for `--verify`              |
+| `--verifier-url <url>` | The verifier's API URL                                                         |
 
-Libraries that need linking are not supported here; use a script.
+Libraries that need linking are not supported here; use a script. Verification runs
+`forge verify-contract` once the deployment is confirmed; see
+[verifying contracts](../guides/verification.md).
 
 ## `hatchway connect`
 
@@ -76,20 +81,21 @@ endpoint. Exits 1 if a check fails.
 
 ## Exit codes
 
-| Code | Meaning                                                    |
-| ---- | ---------------------------------------------------------- |
-| 0    | Success                                                    |
-| 1    | Failure (tool failed, wallet error, internal error)        |
-| 2    | Usage error (bad arguments, project or artifact not found) |
-| 3    | Rejected in the wallet                                     |
-| 4    | Session or approval timed out                              |
-| 5    | RPC endpoint unreachable or erroring                       |
-| 6    | Wrong network or wrong account                             |
-| 7    | Required tool not installed (forge, Hardhat)               |
-| 8    | Transaction reverted on-chain                              |
-| 9    | Integrity check failed (broadcast differs, or replaced)    |
-| 10   | Session cancelled in the browser                           |
-| 130  | Interrupted (Ctrl+C)                                       |
+| Code | Meaning                                                      |
+| ---- | ------------------------------------------------------------ |
+| 0    | Success                                                      |
+| 1    | Failure (tool failed, wallet error, internal error)          |
+| 2    | Usage error (bad arguments, project or artifact not found)   |
+| 3    | Rejected in the wallet                                       |
+| 4    | Session or approval timed out                                |
+| 5    | RPC endpoint unreachable or erroring                         |
+| 6    | Wrong network or wrong account                               |
+| 7    | Required tool not installed (forge, Hardhat)                 |
+| 8    | Transaction reverted on-chain                                |
+| 9    | Integrity check failed (broadcast differs, or replaced)      |
+| 10   | Session cancelled in the browser                             |
+| 11   | Deployed, but source verification failed (`deploy --verify`) |
+| 130  | Interrupted (Ctrl+C)                                         |
 
 ## Files
 

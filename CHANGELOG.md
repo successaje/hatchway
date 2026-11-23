@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `hatchway deploy --verify` publishes the contract's source once the deployment is confirmed,
+  through `forge verify-contract` (Sourcify by default; `--verifier` and `--verifier-url` for
+  Etherscan, Blockscout and others, with keys from forge's usual environment variables or
+  `foundry.toml`). A failed verification leaves the deployment in place, exits with the new
+  code 11 (`VERIFICATION_FAILED`) and prints the command to retry.
+- `hatchway deploy --rpc-url` accepts `foundry.toml` `rpc_endpoints` aliases in Foundry projects,
+  as `hatchway forge` does.
+- A guide to verifying contracts with `deploy`, `forge … --verify` and Hardhat.
+
 ### Changed
 
 - With forge 1.10 and later, `hatchway forge … --broadcast` checks before opening the signing

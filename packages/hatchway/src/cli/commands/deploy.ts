@@ -1,12 +1,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
-import { encodeDeployData, getAddress, isAddress, type Abi, type Hex } from "viem";
-import { findFoundryRoot, foundryMissing } from "../../adapters/foundry.js";
+import {
+  encodeAbiParameters,
+  encodeDeployData,
+  getAddress,
+  isAddress,
+  type Abi,
+  type Hex,
+} from "viem";
+import { findFoundryRoot, foundryMissing, resolveForgeRpc } from "../../adapters/foundry.js";
 import { findHardhatConfig, locateHardhat } from "../../adapters/hardhat.js";
-import { runTool } from "../../adapters/process.js";
+import { runTool, type RunningTool } from "../../adapters/process.js";
 import { ExitCode, HatchwayError } from "../../core/errors.js";
 import { ArtifactIndex, type ArtifactEntry } from "../../evm/artifacts.js";
 import { normalizeTransaction } from "../../evm/tx.js";
+import { urlSecrets } from "../../util/redact.js";
 import { parseOptions, SESSION_OPTIONS } from "../args.js";
 import { coerceArg, parseValue } from "../coerce.js";
 import { HELP } from "../help.js";
@@ -21,9 +29,18 @@ const DEPLOY_OPTIONS = {
   from: { type: "string" },
   build: { type: "boolean" },
   root: { type: "string" },
+  verify: { type: "boolean" },
+  verifier: { type: "string" },
+  "verifier-url": { type: "string" },
 } as const;
 
 type Framework = "foundry" | "hardhat";
+
+/** Where and how to verify the deployed contract's source, when --verify is given. */
+interface VerifyOptions {
+  verifier: string | undefined;
+  verifierUrl: string | undefined;
+}
 
 export async function deployCommand(
   argv: string[],
@@ -44,8 +61,8 @@ export async function deployCommand(
   }
   const target = rest[0]!;
 
-  const rpcUrl = (options["rpc-url"] as string | undefined) ?? process.env.ETH_RPC_URL;
-  if (!rpcUrl)
+  const rpcOption = options["rpc-url"] as string | undefined;
+  if (!rpcOption && !process.env.ETH_RPC_URL)
     throw new HatchwayError("USAGE", "No RPC endpoint given.", {
       hint: "Pass --rpc-url <url> or set ETH_RPC_URL.",
     });
@@ -53,9 +70,17 @@ export async function deployCommand(
   if (from !== undefined && !isAddress(from, { strict: false }))
     throw new HatchwayError("USAGE", `--from ${from} is not a valid address.`);
   const value = typeof options.value === "string" ? parseValue(options.value) : 0n;
+  const verify = verifyOptions(options);
+  if (verify?.verifierUrl) reporter.addSecrets(urlSecrets(verify.verifierUrl));
 
   const start = resolve((options.root as string | undefined) ?? process.cwd());
   const { root, framework } = detectProject(start, target);
+  if (verify && framework !== "foundry") throw cannotVerify(framework);
+  // In a Foundry project, --rpc-url also accepts foundry.toml's rpc_endpoints aliases, as forge does.
+  const rpcUrl =
+    framework === "foundry"
+      ? await resolveForgeRpc(rpcOption, root)
+      : (rpcOption ?? process.env.ETH_RPC_URL!);
 
   reporter.header(`deploy ${target}`);
   if (framework && options.build !== false) await build(framework, root, reporter);
@@ -75,7 +100,7 @@ export async function deployCommand(
       },
     );
   }
-  const data = encodeConstructor(entry, constructorInputs);
+  const { data, constructorArgs } = encodeConstructor(entry, constructorInputs);
   reporter.field("Contract", `${entry.name} ${reporter.c.dim(entry.sourcePath ?? "")}`);
   if (framework)
     reporter.field(
@@ -103,6 +128,7 @@ export async function deployCommand(
   });
 
   let error: HatchwayError | undefined;
+  let deployedAt: string | undefined;
   try {
     const { address } = await waitForWallet(bridge, reporter);
     const tx = normalizeTransaction({ from: address, data, value: `0x${value.toString(16)}` });
@@ -113,11 +139,9 @@ export async function deployCommand(
     await request.completion.promise;
     await request.settled.promise;
     if (request.state !== "confirmed") throw request.replayError();
+    deployedAt = request.result?.contractAddress;
   } catch (caught) {
-    error =
-      caught instanceof HatchwayError
-        ? caught
-        : new HatchwayError("INTERNAL", String(caught), { cause: caught });
+    error = asHatchwayError(caught);
   } finally {
     release();
   }
@@ -125,7 +149,33 @@ export async function deployCommand(
   if (!error) {
     reporter.ok(reporter.c.bold("Deployment successful"));
     reporter.line();
-  } else {
+  }
+  let verification: { ok: boolean; verifier?: string } | undefined;
+  if (!error && verify && deployedAt && bridge.session.chain) {
+    verification = verify.verifier ? { ok: false, verifier: verify.verifier } : { ok: false };
+    try {
+      await verifySource({
+        root,
+        entry,
+        address: deployedAt,
+        chainId: bridge.session.chain.id,
+        constructorArgs,
+        options: verify,
+        reporter,
+      });
+      verification.ok = true;
+    } catch (caught) {
+      error = asHatchwayError(caught);
+    }
+    reporter.event({
+      event: "verification",
+      contract: entry.name,
+      address: deployedAt,
+      chainId: bridge.session.chain.id,
+      ...verification,
+    });
+  }
+  if (error) {
     reporter.error(error);
     reporter.line();
   }
@@ -136,7 +186,7 @@ export async function deployCommand(
     startedAt,
     status: error ? "failed" : "success",
     projectRoot: root,
-    extra: { framework: framework ?? "artifact" },
+    extra: { framework: framework ?? "artifact", ...(verification ? { verification } : {}) },
   });
   if (record) reporter.field("Run record", record);
   reporter.line();
@@ -148,11 +198,105 @@ export async function deployCommand(
     chainId: bridge.session.chain?.id,
     wallet: bridge.session.wallet?.address,
     transactions: transactionRecords(bridge),
+    ...(verification ? { verification } : {}),
     ...(record ? { runRecord: record } : {}),
     ...(error ? { error: { code: error.code, message: error.message } } : {}),
   });
   await bridge.close(error ? "failed" : "completed", error?.message);
   return exitCode;
+}
+
+function asHatchwayError(caught: unknown): HatchwayError {
+  return caught instanceof HatchwayError
+    ? caught
+    : new HatchwayError("INTERNAL", String(caught), { cause: caught });
+}
+
+function verifyOptions(options: Record<string, unknown>): VerifyOptions | undefined {
+  const verifier = options.verifier as string | undefined;
+  const verifierUrl = options["verifier-url"] as string | undefined;
+  if (options.verify !== true) {
+    if (verifier !== undefined || verifierUrl !== undefined)
+      throw new HatchwayError("USAGE", "--verifier and --verifier-url only apply with --verify.");
+    return undefined;
+  }
+  return { verifier, verifierUrl };
+}
+
+/** Explains, before anything is deployed, why --verify cannot be used for this target. */
+function cannotVerify(framework: Framework | undefined): HatchwayError {
+  if (framework === "hardhat")
+    return new HatchwayError("USAGE", "--verify works with Foundry projects.", {
+      hint: "For Hardhat, use the hardhat-verify plugin: deploy with `hatchway hardhat ignition deploy <module> --network <name> --verify`, or run `npx hardhat verify --network <name> <address> <args…>` after this deployment.",
+    });
+  return new HatchwayError("USAGE", "--verify needs the contract's sources.", {
+    hint: "Run it in the Foundry project that compiled the contract, not with an artifact file.",
+  });
+}
+
+/**
+ * Submits the deployed contract's source with `forge verify-contract`, which builds the
+ * standard JSON input from the project and talks to the verifier (Sourcify unless
+ * --verifier says otherwise). API keys come from forge's own sources: ETHERSCAN_API_KEY,
+ * VERIFIER_API_KEY or `[etherscan]` in foundry.toml, never Hatchway's command line.
+ */
+async function verifySource(input: {
+  root: string;
+  entry: ArtifactEntry;
+  address: string;
+  chainId: number;
+  constructorArgs: Hex;
+  options: VerifyOptions;
+  reporter: Reporter;
+}): Promise<void> {
+  const { root, entry, address, chainId, constructorArgs, options, reporter } = input;
+  const args = [
+    "verify-contract",
+    address,
+    entry.sourcePath ? `${entry.sourcePath}:${entry.name}` : entry.name,
+    "--chain",
+    String(chainId),
+    "--watch",
+  ];
+  if (constructorArgs !== "0x") args.push("--constructor-args", constructorArgs);
+  if (options.verifier) args.push("--verifier", options.verifier);
+  if (options.verifierUrl) args.push("--verifier-url", options.verifierUrl);
+
+  reporter.step(`Verifying ${entry.name}'s source…`);
+  let tool: RunningTool | undefined;
+  let interrupted = false;
+  const release = onInterrupt(() => {
+    interrupted = true;
+    reporter.warn("Interrupted. Stopping verification…");
+    void tool?.stop();
+  });
+  try {
+    tool = runTool("forge", [...args, "--root", root], {
+      cwd: root,
+      onLine: (line) => reporter.tool("forge", line),
+      notFound: { message: foundryMissing().message, hint: foundryMissing().hint ?? "" },
+    });
+    const code = await tool.exited;
+    if (interrupted)
+      throw new HatchwayError("INTERRUPTED", `${entry.name} is deployed but not verified.`);
+    if (code !== 0) {
+      throw new HatchwayError(
+        "VERIFICATION_FAILED",
+        `${entry.name} is deployed, but verification failed.`,
+        {
+          hint: `See forge's output above. To retry without deploying again, run this in the project: forge ${args.map(shellArg).join(" ")}`,
+        },
+      );
+    }
+  } finally {
+    release();
+  }
+  reporter.ok("Source verified.");
+  reporter.line();
+}
+
+function shellArg(arg: string): string {
+  return /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`;
 }
 
 function detectProject(
@@ -242,7 +386,10 @@ async function resolveArtifact(target: string, root: string): Promise<ArtifactEn
   return unique[0]!;
 }
 
-function encodeConstructor(entry: ArtifactEntry, inputs: string[]): Hex {
+function encodeConstructor(
+  entry: ArtifactEntry,
+  inputs: string[],
+): { data: Hex; constructorArgs: Hex } {
   const ctor = entry.abi.find((item) => item.type === "constructor");
   const params = ctor && "inputs" in ctor ? ctor.inputs : [];
   if (params.length !== inputs.length) {
@@ -260,5 +407,8 @@ function encodeConstructor(entry: ArtifactEntry, inputs: string[]): Hex {
     );
   }
   const args = params.map((param, i) => coerceArg(param, inputs[i]));
-  return encodeDeployData({ abi: entry.abi, bytecode: `0x${entry.bytecode}`, args });
+  return {
+    data: encodeDeployData({ abi: entry.abi, bytecode: `0x${entry.bytecode}`, args }),
+    constructorArgs: params.length > 0 ? encodeAbiParameters(params, args) : "0x",
+  };
 }

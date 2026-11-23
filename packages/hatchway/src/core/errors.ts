@@ -15,6 +15,7 @@ export const ExitCode = {
   Reverted: 8,
   Integrity: 9,
   Cancelled: 10,
+  Unverified: 11,
   Interrupted: 130,
 } as const;
 
@@ -39,6 +40,7 @@ export type ErrorCode =
   | "PREVIOUS_FAILED"
   | "INTEGRITY_MISMATCH"
   | "TRANSACTION_REPLACED"
+  | "VERIFICATION_FAILED"
   | "WALLET_ERROR"
   | "TOOL_NOT_FOUND"
   | "TOOL_FAILED"
@@ -67,6 +69,7 @@ const EXIT_CODES: Record<ErrorCode, ExitCode> = {
   PREVIOUS_FAILED: ExitCode.Failure,
   INTEGRITY_MISMATCH: ExitCode.Integrity,
   TRANSACTION_REPLACED: ExitCode.Integrity,
+  VERIFICATION_FAILED: ExitCode.Unverified,
   WALLET_ERROR: ExitCode.Failure,
   TOOL_NOT_FOUND: ExitCode.ToolMissing,
   TOOL_FAILED: ExitCode.Failure,

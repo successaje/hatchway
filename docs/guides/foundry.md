@@ -106,7 +106,8 @@ command line, where Hatchway does not put the session's token.
 | Rejection, wrong network, account change, Ctrl+C    | Supported      | Tested                                              |
 | Approvals slower than forge's 45 s RPC timeout      | Supported      | ~4 minutes per transaction on forge 1.6; tested     |
 | Dry run (no `--broadcast`)                          | Supported      |                                                     |
-| `--verify`, `--sig`, `--with-gas-price`, `-v…`      | Passed through | Not separately tested                               |
+| `--verify`, `--verifier`, `--verifier-url`          | Supported      | Passed through; tested with a local verifier        |
+| `--sig`, `--with-gas-price`, `-v…`                  | Passed through | Not separately tested                               |
 | `--start-fresh` (forge 1.10+)                       | Supported      | Tested                                              |
 | `--resume`                                          | Partial        | Passed through before forge 1.10; refused from 1.10 |
 | `[rpc_endpoints]` aliases with `${ENV}`             | Supported      |                                                     |
@@ -116,7 +117,7 @@ command line, where Hatchway does not put the session's token.
 | `--debug`                                           | Unsupported    |                                                     |
 | zkSync and other non-standard deployment chains     | Unsupported    |                                                     |
 
-Verified with forge **1.6.0-nightly (2026-04-27)** locally and **1.8.7** (stable) in CI.
+Verified with forge **1.6.0-nightly (2026-04-27)** locally, and **1.8.7** and **1.10.0** (stable) in CI.
 Background: [Foundry integration research](../research/foundry-integration.md).
 
 ## Foundry's own `--browser`

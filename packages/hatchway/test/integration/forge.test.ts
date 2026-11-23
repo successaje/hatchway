@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, rpc, startAnvil, type Anvil } from "../helpers/anvil.js";
 import { clearBroadcasts, FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
 import { HeadlessWallet, type Decision } from "../helpers/headless-wallet.js";
+import { startVerifier } from "../helpers/verifier.js";
 import { checksUnfinishedBroadcasts, forgeVersion } from "../../src/adapters/foundry.js";
 import type { RequestView } from "../../src/core/protocol.js";
 
@@ -111,6 +112,28 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     };
     expect(saved.transactions[0]!.hash).toBe(tx!.hash);
     expect(run.result.broadcastFile).toBeTruthy();
+  });
+
+  it("passes --verify through, so forge verifies what the wallet deployed", async () => {
+    const verifier = await startVerifier();
+    try {
+      const run = await forge("script/DeployCounter.s.sol", {
+        extra: ["--verify", "--verifier", "blockscout", "--verifier-url", verifier.url],
+      });
+      expect(run.code, run.stderr).toBe(0);
+      const [tx] = transactions(run.result);
+      expect(
+        verifier.submissions.map((s) => [s.contractaddress, s.contractname, s.codeformat]),
+      ).toEqual([
+        [
+          tx!.contractAddress!.toLowerCase(),
+          "src/Counter.sol:Counter",
+          "solidity-standard-json-input",
+        ],
+      ]);
+    } finally {
+      await verifier.close();
+    }
   });
 
   it("decodes and applies constructor arguments", async () => {
