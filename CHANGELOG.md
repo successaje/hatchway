@@ -10,8 +10,9 @@ All notable changes to this project are documented here. The format follows
 
 - With forge 1.10 and later, `hatchway forge … --broadcast` checks before opening the signing
   page whether forge will refuse the run because the script's previous broadcast is unfinished
-  (for example after a rejection or Ctrl+C), and says how to continue with `--resume` or
-  `--start-fresh`, instead of failing after the wallet has connected.
+  (for example after a rejection or Ctrl+C), instead of failing after the wallet has connected.
+  The message gives the flags to start over (`--start-fresh`) or to resume, including the
+  `--resume-attempt <id> --resume-retry` forge needs for a send the wallet rejected.
 
 ## [0.1.0] - 2026-11-01
 

@@ -380,15 +380,12 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
 });
 
 describe.runIf(refusesUnfinished)("after an unfinished broadcast (forge 1.10 and later)", () => {
-  async function leaveUnfinished() {
+  /** Rejects DeployCounter in the wallet, then reruns it plainly: Hatchway should refuse. */
+  async function rejectThenRerun() {
     const rejected = await forge("script/DeployCounter.s.sol", {
       decide: () => ({ action: "reject" }),
     });
     expect(rejected.code).toBe(3);
-  }
-
-  it("stops before opening a session, then runs anew with --start-fresh", async () => {
-    await leaveUnfinished();
     const again = runCli(
       [
         "forge",
@@ -402,6 +399,11 @@ describe.runIf(refusesUnfinished)("after an unfinished broadcast (forge 1.10 and
       { cwd: FOUNDRY_EXAMPLE },
     );
     expect(await again.exited, again.stderr()).toBe(2);
+    return again;
+  }
+
+  it("stops before opening a session, then runs anew with --start-fresh", async () => {
+    const again = await rejectThenRerun();
     expect(again.events.map((e) => e.event)).not.toContain("session");
     expect(again.result()!.error).toMatchObject({ code: "USAGE" });
     expect(again.stderr()).toContain("did not finish (0 of 1 transactions confirmed)");
@@ -412,9 +414,16 @@ describe.runIf(refusesUnfinished)("after an unfinished broadcast (forge 1.10 and
     expect(transactions(fresh.result)[0]!.state).toBe("confirmed");
   });
 
-  it("sends what is left with --resume", async () => {
-    await leaveUnfinished();
-    const resumed = await forge("script/DeployCounter.s.sol", { extra: ["--resume"] });
+  it("names the rejected send, which --resume --resume-retry then sends through the wallet", async () => {
+    const again = await rejectThenRerun();
+    const attempt = /--resume --resume-attempt (0x[0-9a-f]{64}) --resume-retry/.exec(
+      again.stderr(),
+    )?.[1];
+    expect(attempt, again.stderr()).toBeDefined();
+
+    const resumed = await forge("script/DeployCounter.s.sol", {
+      extra: ["--resume", "--resume-attempt", attempt!, "--resume-retry"],
+    });
     expect(resumed.code, resumed.stderr).toBe(0);
     expect(transactions(resumed.result).at(-1)!.state).toBe("confirmed");
   });

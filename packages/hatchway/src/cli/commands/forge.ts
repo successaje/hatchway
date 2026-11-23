@@ -217,11 +217,17 @@ async function refuseUnfinishedBroadcast(
   );
   if (!unfinished) return;
   const script = basename(invocation.script.split(":")[0]!);
+  // forge cannot tell whether a send the wallet never answered went out, so --resume alone
+  // stops on it; Hatchway can name the attempt for the person to settle.
+  const [attempt, ...others] = unfinished.unresolvedAttempts;
+  const resume = attempt
+    ? `To continue it instead, if the unconfirmed send was rejected in the wallet or never sent (the account's nonce has not moved), add --resume --resume-attempt ${attempt} --resume-retry${others.length > 0 ? `; forge then names the ${others.length} other unresolved send(s)` : ""}.`
+    : "To continue it instead, add --resume; each remaining transaction still goes to your wallet.";
   throw new HatchwayError(
     "USAGE",
     `The previous broadcast of ${script} on chain ${chainId} did not finish (${unfinished.confirmed} of ${unfinished.transactions} transactions confirmed), and forge will not run it again as it is.`,
     {
-      hint: `Add --resume to send what is left (each transaction still goes to your wallet), or --start-fresh to archive ${relative(process.cwd(), unfinished.record)} and run the script anew. Before --start-fresh, check that none of its transactions is still pending.`,
+      hint: `Add --start-fresh to archive ${relative(process.cwd(), unfinished.record)} and run the script anew, after checking that none of its transactions is still pending. ${resume}`,
     },
   );
 }

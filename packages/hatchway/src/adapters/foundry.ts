@@ -287,7 +287,9 @@ interface ForgeSequence {
 }
 
 interface RecoverySnapshot {
-  deployments?: { attempts?: unknown[] }[];
+  deployments?: {
+    attempts?: { id?: string; kind?: { kind?: string; status?: { status?: string } } }[];
+  }[];
   data?: { sequence?: ForgeSequence };
 }
 
@@ -296,6 +298,12 @@ export interface UnfinishedBroadcast {
   record: string;
   transactions: number;
   confirmed: number;
+  /**
+   * Sends through the wallet whose outcome forge never learned (a rejection, or a stop before
+   * the wallet answered). `--resume` needs `--resume-attempt <id>` and either `--resume-retry`
+   * (it was never sent) or `--resume-tx-hash` (it was) for each.
+   */
+  unresolvedAttempts: string[];
 }
 
 function readJson<T>(path: string): T | undefined {
@@ -329,16 +337,23 @@ export function unfinishedBroadcast(input: {
 
   // A run that stopped while saving leaves its newest snapshot pending; forge always refuses.
   if (existsSync(pending)) {
-    return { record, ...progress(flatten(readJson<RecoverySnapshot>(pending)?.data?.sequence)) };
+    const plan = readJson<RecoverySnapshot>(pending);
+    return {
+      record,
+      ...progress(flatten(plan?.data?.sequence)),
+      unresolvedAttempts: unresolved(plan),
+    };
   }
   let sequences: ForgeSequence[];
   let attempted = false;
   let recoveryAware = false;
+  let unresolvedAttempts: string[] = [];
   if (existsSync(snapshot)) {
     const plan = readJson<RecoverySnapshot>(snapshot);
     if (!plan?.data?.sequence) return undefined;
     sequences = flatten(plan.data.sequence);
     attempted = (plan.deployments ?? []).some((d) => (d.attempts?.length ?? 0) > 0);
+    unresolvedAttempts = unresolved(plan);
   } else {
     const data = readJson<ForgeSequence>(record);
     if (!data) return undefined;
@@ -354,8 +369,16 @@ export function unfinishedBroadcast(input: {
       (s) => (s.awaiting_owners?.length ?? 0) > 0 || (s.transactions ?? []).some((tx) => tx.hash),
     );
   return confirmed < transactions && (submitted || recoveryAware)
-    ? { record, transactions, confirmed }
+    ? { record, transactions, confirmed, unresolvedAttempts }
     : undefined;
+}
+
+/** Wallet sends (`delegated` attempts) that never reached a known hash. */
+function unresolved(plan: RecoverySnapshot | undefined): string[] {
+  return (plan?.deployments ?? [])
+    .flatMap((d) => d.attempts ?? [])
+    .filter((a) => a.kind?.kind === "delegated" && a.kind.status?.status !== "pending")
+    .flatMap((a) => (a.id ? [a.id] : []));
 }
 
 function flatten(data: ForgeSequence | undefined): ForgeSequence[] {

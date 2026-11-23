@@ -75,15 +75,22 @@ it there. Newer forge builds honour the `ETH_RPC_TIMEOUT` value Hatchway sets.
 
 ## Resuming
 
-If a run stops part-way (rejection, timeout), rerun the same command; forge re-simulates from
-the current chain state. `--resume` is passed through to forge unchanged.
+If a run stops part-way (rejection, timeout), forge before 1.10 re-simulates from the current
+chain state when you rerun the same command. `--resume` is passed through to forge unchanged.
 
 forge 1.10 and later refuse to rerun a script whose previous broadcast was left unfinished: it
 sent something that never confirmed. With those versions, Hatchway applies forge's own check
 before opening the signing page, so you are not asked to connect your wallet for a run forge
-would refuse. It exits with code 2 and names the record. Then add `--start-fresh` to archive
-that record and run the script anew (first check that none of its transactions is still
-pending), or `--resume` to send what is left; each transaction still goes to your wallet.
+would refuse. It exits with code 2, names the record and gives the flags for either choice:
+
+- `--start-fresh` archives that record and runs the script anew. First check that none of its
+  transactions is still pending.
+- `--resume` sends what is left, without simulating again. After a rejection, forge cannot tell
+  whether the wallet sent the transaction, so it also needs `--resume-attempt <id>` and
+  `--resume-retry`; Hatchway prints the id. Use `--resume-retry` only when that send never
+  happened: after a rejection, the account's nonce has not moved.
+
+Either way, each transaction still goes to your wallet.
 
 ## Compatibility matrix
 
