@@ -1,4 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const BIN = fileURLToPath(new URL("../../dist/bin.js", import.meta.url));
@@ -9,6 +11,15 @@ export const FOUNDRY_EXAMPLE = fileURLToPath(
 export const HARDHAT_EXAMPLE = fileURLToPath(
   new URL("../../../../examples/hardhat-basic", import.meta.url),
 );
+
+/**
+ * Removes forge's broadcast records from the Foundry example. forge 1.10 and later refuse to
+ * broadcast a script whose previous run has unfinished operations, and several tests leave one
+ * on purpose (rejection, Ctrl+C, nonce conflicts), so each test starts without them.
+ */
+export function clearBroadcasts(): void {
+  rmSync(join(FOUNDRY_EXAMPLE, "broadcast"), { recursive: true, force: true });
+}
 
 export type CliEvent = { event: string } & Record<string, unknown>;
 
