@@ -31,10 +31,37 @@ exit code is meaningful (0 success, 3 rejected, 8 reverted, 9 integrity, …; se
 
 1. Run the command with `--json --no-open` in the background.
 2. Read the first `session` event and show the URL to the human ("Open this link to review and
-   approve the deployment").
+   approve the deployment"). If another `session` event arrives with `reconnect: true`, the tab
+   was closed: show the new link.
 3. Follow `request`/`submitted`/`confirmed`/`failed` events to report progress.
 4. Read the final `result` event (or the `runRecord` file) for addresses and hashes, then
-   continue (verify, update config, run integration tests).
+   continue (verify, update config, run integration tests). If `ok` is false, see
+   [when a run stops](#when-a-run-stops) before doing anything else.
+
+## When a run stops
+
+Hatchway never turns a human decision into a retry. The `result` event's `exitCode` and
+`error.code`, also the process exit code, say why a run ended:
+
+| Exit | `error.code`                                 | What happened                                                                                                                                 | What the agent should do                                                       |
+| ---- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 3    | `USER_REJECTED`                              | The person rejected a request in the wallet. Nothing after it was sent.                                                                       | Stop. Ask before running anything again, and what to change.                   |
+| 10   | `SESSION_CANCELLED`                          | The person clicked "Cancel session" on the page.                                                                                              | Stop and ask.                                                                  |
+| 4    | `APPROVAL_TIMEOUT`, `SESSION_EXPIRED`        | Nobody approved within 15 minutes of a request being shown, connected a wallet within 15 minutes, or the session reached `--session-timeout`. | Check with the person before starting a new session.                           |
+| 2    | `USAGE`                                      | Includes, with forge 1.10 and later, a script whose previous broadcast stopped part-way. No session was opened.                               | Ask whether to `--resume` (send what is left) or `--start-fresh` (start over). |
+| 8    | `TRANSACTION_REVERTED`                       | Approved and mined, but reverted on-chain. Later transactions were not sent.                                                                  | Investigate. A rerun deploys and sends again.                                  |
+| 9    | `INTEGRITY_MISMATCH`, `TRANSACTION_REPLACED` | The wallet broadcast something other than what was approved, or the transaction was replaced.                                                 | Stop and report it; do not retry.                                              |
+
+The full list is in the [CLI reference](../reference/cli.md#exit-codes). Each entry in
+`transactions` has its own `state` (`confirmed`, `rejected`, `expired`, `reverted`, …), so the
+agent can tell what went through before the stop.
+
+- **A closed tab is not a stop.** The session keeps waiting. After a few seconds without a page,
+  Hatchway emits a `session` event with `reconnect: true` and a fresh link (links are single-use).
+  If nobody returns, the open request expires and the run ends with exit code 4.
+- **A rerun is a new request.** It asks the wallet again for every transaction; a rejection is
+  never replayed as an approval. Rerunning after a rejection without asking only puts the same
+  question back in front of the person.
 
 ## Rules the boundary enforces
 
