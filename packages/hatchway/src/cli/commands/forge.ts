@@ -2,15 +2,19 @@ import { basename, relative } from "node:path";
 import { getAddress, isAddress } from "viem";
 import {
   buildForgeArgs,
+  checksUnfinishedBroadcasts,
   findBroadcastFile,
   findFoundryRoot,
+  findUnfinishedBroadcast,
   foundryMissing,
   forgeVersion,
   parseForgeArgs,
   resolveForgeRpc,
+  type ForgeInvocation,
 } from "../../adapters/foundry.js";
 import { runTool, type RunningTool } from "../../adapters/process.js";
 import { ExitCode, HatchwayError } from "../../core/errors.js";
+import { UpstreamRpc } from "../../evm/rpc.js";
 import { parseOptions, SESSION_OPTIONS } from "../args.js";
 import { HELP } from "../help.js";
 import type { Reporter } from "../output.js";
@@ -52,6 +56,7 @@ export async function forgeCommand(
     throw new HatchwayError("USAGE", `--sender ${invocation.sender} is not a valid address.`);
   }
   const upstreamUrl = await resolveForgeRpc(invocation.rpc, root);
+  if (checksUnfinishedBroadcasts(version)) await checkForgeRecovery(invocation, root, upstreamUrl);
   const project = relative(process.cwd(), root) || basename(root);
   const title = `forge script ${invocation.script ?? ""}`.trim();
 
@@ -183,4 +188,53 @@ export async function forgeCommand(
   });
   await bridge.close(error ? (interrupted ? "cancelled" : "failed") : "completed", error?.message);
   return exitCode;
+}
+
+const START_FRESH =
+  "forge archives the unfinished record and runs the whole script again against the current chain state, so transactions that already confirmed are simulated again; review each one in your wallet";
+
+/**
+ * forge 1.10 and later keep each broadcast's progress for `--resume`, and will not broadcast a
+ * script again while its previous run is unfinished (it submitted something that never
+ * confirmed). Both are settled here, before the session opens, rather than after the wallet
+ * has connected and forge has simulated.
+ */
+async function checkForgeRecovery(
+  invocation: ForgeInvocation,
+  root: string,
+  upstreamUrl: string,
+): Promise<void> {
+  if (invocation.resume) {
+    // A resume uses the endpoint saved by the earlier run unless --rpc-url is on forge's command
+    // line, where Hatchway never puts the bridge token. The earlier run's bridge has closed.
+    throw new HatchwayError(
+      "USAGE",
+      "--resume does not work through Hatchway with forge 1.10 and later.",
+      {
+        hint: `forge resumes through the endpoint the earlier run used, which was that run's Hatchway session and has closed. Rerun with --start-fresh instead: ${START_FRESH}.`,
+      },
+    );
+  }
+  if (!invocation.broadcast || invocation.startFresh || !invocation.script) return;
+  let chainId: number;
+  try {
+    chainId = await new UpstreamRpc(upstreamUrl, { timeoutMs: 10_000 }).chainId();
+  } catch {
+    return; // The session reports an unreachable or invalid endpoint properly.
+  }
+  const unfinished = await findUnfinishedBroadcast(
+    root,
+    invocation.script,
+    invocation.sig,
+    chainId,
+  );
+  if (!unfinished) return;
+  const script = basename(invocation.script.split(":")[0]!);
+  throw new HatchwayError(
+    "USAGE",
+    `The previous broadcast of ${script} on chain ${chainId} did not finish (${unfinished.confirmed} of ${unfinished.transactions} transactions confirmed), and forge will not run it again as it is.`,
+    {
+      hint: `First check that none of its transactions is still pending, then rerun with --start-fresh: ${START_FRESH}. The record is ${relative(process.cwd(), unfinished.record)}.`,
+    },
+  );
 }

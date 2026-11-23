@@ -7,10 +7,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, rpc, startAnvil, type Anvil } from "../helpers/anvil.js";
 import { clearBroadcasts, FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
 import { HeadlessWallet, type Decision } from "../helpers/headless-wallet.js";
+import { checksUnfinishedBroadcasts, forgeVersion } from "../../src/adapters/foundry.js";
 import type { RequestView } from "../../src/core/protocol.js";
 
 let anvil: Anvil;
 const deployer = ANVIL_ACCOUNTS[0];
+const refusesUnfinished = checksUnfinishedBroadcasts((await forgeVersion()) ?? "");
 
 beforeAll(async () => {
   execFileSync("forge", ["build"], { cwd: FOUNDRY_EXAMPLE, stdio: "ignore" });
@@ -374,5 +376,49 @@ describe("hatchway forge (Foundry, real forge + anvil)", () => {
     expect(await run.exited, run.stderr()).toBe(0);
     wallet.close();
     rmSync(project, { recursive: true, force: true });
+  });
+});
+
+describe.runIf(refusesUnfinished)("broadcast recovery (forge 1.10 and later)", () => {
+  /** Runs DeployCounter with --broadcast and the given flags, expecting no session to open. */
+  async function refusedRun(extra: string[] = []) {
+    const run = runCli(
+      [
+        "forge",
+        "--json",
+        "--no-open",
+        "script/DeployCounter.s.sol",
+        "--rpc-url",
+        anvil.url,
+        "--broadcast",
+        ...extra,
+      ],
+      { cwd: FOUNDRY_EXAMPLE },
+    );
+    expect(await run.exited, run.stderr()).toBe(2);
+    expect(run.events.map((e) => e.event)).not.toContain("session");
+    expect(run.result()!.error).toMatchObject({ code: "USAGE" });
+    return run;
+  }
+
+  it("stops a rerun after a rejection before opening a session, then runs with --start-fresh", async () => {
+    const rejected = await forge("script/DeployCounter.s.sol", {
+      decide: () => ({ action: "reject" }),
+    });
+    expect(rejected.code).toBe(3);
+    const again = await refusedRun();
+    expect(again.stderr()).toContain("did not finish (0 of 1 transactions confirmed)");
+    expect(again.stderr()).toContain("rerun with --start-fresh");
+
+    const fresh = await forge("script/DeployCounter.s.sol", { extra: ["--start-fresh"] });
+    expect(fresh.code, fresh.stderr).toBe(0);
+    expect(transactions(fresh.result)[0]!.state).toBe("confirmed");
+  });
+
+  // forge resumes through the endpoint the earlier run saved, which was that run's session.
+  it("refuses --resume before opening a session, pointing to --start-fresh", async () => {
+    const run = await refusedRun(["--resume"]);
+    expect(run.stderr()).toContain("--resume does not work through Hatchway with forge 1.10");
+    expect(run.stderr()).toContain("--start-fresh");
   });
 });
