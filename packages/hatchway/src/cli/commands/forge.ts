@@ -56,8 +56,7 @@ export async function forgeCommand(
     throw new HatchwayError("USAGE", `--sender ${invocation.sender} is not a valid address.`);
   }
   const upstreamUrl = await resolveForgeRpc(invocation.rpc, root);
-  if (checksUnfinishedBroadcasts(version))
-    await refuseUnfinishedBroadcast(invocation, root, upstreamUrl);
+  if (checksUnfinishedBroadcasts(version)) await checkForgeRecovery(invocation, root, upstreamUrl);
   const project = relative(process.cwd(), root) || basename(root);
   const title = `forge script ${invocation.script ?? ""}`.trim();
 
@@ -191,18 +190,32 @@ export async function forgeCommand(
   return exitCode;
 }
 
+const START_FRESH =
+  "forge archives the unfinished record and runs the whole script again against the current chain state, so transactions that already confirmed are simulated again; review each one in your wallet";
+
 /**
- * forge 1.10 and later will not broadcast a script again while its previous run is
- * unfinished (it submitted something that never confirmed). Say so before the session opens,
- * rather than after the wallet has connected and forge has simulated.
+ * forge 1.10 and later keep each broadcast's progress for `--resume`, and will not broadcast a
+ * script again while its previous run is unfinished (it submitted something that never
+ * confirmed). Both are settled here, before the session opens, rather than after the wallet
+ * has connected and forge has simulated.
  */
-async function refuseUnfinishedBroadcast(
+async function checkForgeRecovery(
   invocation: ForgeInvocation,
   root: string,
   upstreamUrl: string,
 ): Promise<void> {
-  if (!invocation.broadcast || invocation.resume || invocation.startFresh) return;
-  if (!invocation.script) return;
+  if (invocation.resume) {
+    // A resume uses the endpoint saved by the earlier run unless --rpc-url is on forge's command
+    // line, where Hatchway never puts the bridge token. The earlier run's bridge has closed.
+    throw new HatchwayError(
+      "USAGE",
+      "--resume does not work through Hatchway with forge 1.10 and later.",
+      {
+        hint: `forge resumes through the endpoint the earlier run used, which was that run's Hatchway session and has closed. Rerun with --start-fresh instead: ${START_FRESH}.`,
+      },
+    );
+  }
+  if (!invocation.broadcast || invocation.startFresh || !invocation.script) return;
   let chainId: number;
   try {
     chainId = await new UpstreamRpc(upstreamUrl, { timeoutMs: 10_000 }).chainId();
@@ -217,17 +230,11 @@ async function refuseUnfinishedBroadcast(
   );
   if (!unfinished) return;
   const script = basename(invocation.script.split(":")[0]!);
-  // forge cannot tell whether a send the wallet never answered went out, so --resume alone
-  // stops on it; Hatchway can name the attempt for the person to settle.
-  const [attempt, ...others] = unfinished.unresolvedAttempts;
-  const resume = attempt
-    ? `To continue it instead, if the unconfirmed send was rejected in the wallet or never sent (the account's nonce has not moved), add --resume --resume-attempt ${attempt} --resume-retry${others.length > 0 ? `; forge then names the ${others.length} other unresolved send(s)` : ""}.`
-    : "To continue it instead, add --resume; each remaining transaction still goes to your wallet.";
   throw new HatchwayError(
     "USAGE",
     `The previous broadcast of ${script} on chain ${chainId} did not finish (${unfinished.confirmed} of ${unfinished.transactions} transactions confirmed), and forge will not run it again as it is.`,
     {
-      hint: `Add --start-fresh to archive ${relative(process.cwd(), unfinished.record)} and run the script anew, after checking that none of its transactions is still pending. ${resume}`,
+      hint: `First check that none of its transactions is still pending, then rerun with --start-fresh: ${START_FRESH}. The record is ${relative(process.cwd(), unfinished.record)}.`,
     },
   );
 }

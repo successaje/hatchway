@@ -132,12 +132,7 @@ describe("forge's unfinished-broadcast check", () => {
 
   it("reports a record with a sent transaction that has no receipt", () => {
     const { root, check } = project({ [RECORD]: sequence([HASH_A, HASH_B]) });
-    expect(check()).toEqual({
-      record: join(root, RECORD),
-      transactions: 2,
-      confirmed: 0,
-      unresolvedAttempts: [],
-    });
+    expect(check()).toEqual({ record: join(root, RECORD), transactions: 2, confirmed: 0 });
   });
 
   it("accepts a record whose transactions all have receipts or reverted", () => {
@@ -154,45 +149,26 @@ describe("forge's unfinished-broadcast check", () => {
     expect(project({ [RECORD]: aware }).check()).toMatchObject({ transactions: 1, confirmed: 0 });
   });
 
-  /** A wallet send as forge 1.10 records it (`SubmissionAttempt` with `AttemptKind::Delegated`). */
-  const attempt = (id: string, status: Record<string, string>) => ({
-    id,
-    members: [{ sequence: 0, index: 0 }],
-    kind: { kind: "delegated", request: {}, status },
-  });
-
   it("prefers the recovery snapshot, where an attempted send counts as submitted", () => {
+    // A wallet send as forge 1.10 records it after a rejection (`AttemptKind::Delegated`).
+    const attempt = {
+      id: HASH_B,
+      members: [{ sequence: 0, index: 0 }],
+      kind: { kind: "delegated", request: {}, status: { status: "outcomeUnknown" } },
+    };
     const rejected = {
       version: 1,
-      deployments: [{ chain: 31337, attempts: [attempt(HASH_B, { status: "outcomeUnknown" })] }],
+      deployments: [{ chain: 31337, attempts: [attempt] }],
       data: { kind: "single", sequence: sequence([null]) },
     };
     const complete = sequence([HASH_A], { receipts: [{ transactionHash: HASH_A }] });
     expect(project({ [RECORD]: complete, [SNAPSHOT]: rejected }).check()).toMatchObject({
       transactions: 1,
       confirmed: 0,
-      unresolvedAttempts: [HASH_B],
     });
     const untried = { ...rejected, deployments: [{ chain: 31337 }] };
     const aware = sequence([null], { recovery_generation: HASH_A });
     expect(project({ [RECORD]: aware, [SNAPSHOT]: untried }).check()).toBeUndefined();
-  });
-
-  it("names only the wallet sends whose outcome forge does not know", () => {
-    const snapshot = {
-      deployments: [
-        {
-          attempts: [
-            attempt(HASH_A, { status: "pending", hash: HASH_A }),
-            attempt(HASH_B, { status: "prepared" }),
-          ],
-        },
-      ],
-      data: { kind: "single", sequence: sequence([HASH_A, null]) },
-    };
-    expect(project({ [SNAPSHOT]: snapshot }).check()).toMatchObject({
-      unresolvedAttempts: [HASH_B],
-    });
   });
 
   it("reads multi-chain snapshots", () => {
