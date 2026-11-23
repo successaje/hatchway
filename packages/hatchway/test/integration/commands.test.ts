@@ -1,10 +1,19 @@
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
-import { createWalletClient, http, parseAbi, parseEther, type Address } from "viem";
+import {
+  createWalletClient,
+  encodeAbiParameters,
+  http,
+  parseAbi,
+  parseAbiParameters,
+  parseEther,
+  type Address,
+} from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ANVIL_ACCOUNTS, startAnvil, type Anvil } from "../helpers/anvil.js";
 import { BIN, FOUNDRY_EXAMPLE, runCli, type CliEvent } from "../helpers/cli.js";
 import { HeadlessWallet, type HeadlessWalletOptions } from "../helpers/headless-wallet.js";
+import { startVerifier } from "../helpers/verifier.js";
 
 let anvil: Anvil;
 const deployer = ANVIL_ACCOUNTS[0];
@@ -89,6 +98,78 @@ describe("hatchway deploy", () => {
     expect(String((wrongArgs.result.error as { message: string }).message)).toContain(
       "takes 3 constructor argument",
     );
+  });
+
+  it("verifies the deployed source with --verify", async () => {
+    const verifier = await startVerifier();
+    try {
+      const run = await deploy([
+        "--verify",
+        "--verifier",
+        "blockscout",
+        "--verifier-url",
+        verifier.url,
+        "HatchToken",
+        "--args",
+        "Hatch Token",
+        "HATCH",
+        "5000",
+      ]);
+      expect(run.code, run.stderr).toBe(0);
+      const token = txs(run.result)[0]!.contractAddress!;
+      expect(run.result.verification).toEqual({ ok: true, verifier: "blockscout" });
+      expect(verifier.submissions).toHaveLength(1);
+      expect(verifier.submissions[0]).toMatchObject({
+        contractaddress: token.toLowerCase(),
+        contractname: "src/HatchToken.sol:HatchToken",
+        codeformat: "solidity-standard-json-input",
+        compilerversion: expect.stringMatching(/^v0\.8\.28\+commit\./) as unknown,
+        constructorArguments: encodeAbiParameters(parseAbiParameters("string, string, uint256"), [
+          "Hatch Token",
+          "HATCH",
+          5000n,
+        ]).slice(2),
+      });
+      expect(run.stderr).toContain("Source verified.");
+    } finally {
+      await verifier.close();
+    }
+  });
+
+  it("reports a failed verification with exit code 11, keeping the deployment", async () => {
+    const verifier = await startVerifier({ fail: true });
+    try {
+      const run = await deploy([
+        "--verify",
+        "--verifier",
+        "blockscout",
+        "--verifier-url",
+        verifier.url,
+        "Counter",
+      ]);
+      expect(run.code).toBe(11);
+      expect(run.result.error).toMatchObject({ code: "VERIFICATION_FAILED" });
+      expect(run.result.verification).toEqual({ ok: false, verifier: "blockscout" });
+      expect(txs(run.result)[0]!.state).toBe("confirmed");
+      expect(run.stderr).toContain("To retry without deploying again");
+      expect(run.stderr).toMatch(
+        /forge verify-contract 0x[0-9a-fA-F]{40} src\/Counter.sol:Counter/,
+      );
+    } finally {
+      await verifier.close();
+    }
+  });
+
+  it("refuses --verify without sources, and verifier options without --verify", async () => {
+    const artifact = await deploy(["--verify", "out/Counter.sol/Counter.json"]);
+    expect(artifact.code).toBe(2);
+    expect(artifact.result.error).toMatchObject({
+      code: "USAGE",
+      message: "--verify needs the contract's sources.",
+    });
+    const stray = await deploy(["--verifier", "blockscout", "Counter"]);
+    expect(stray.code).toBe(2);
+    expect(stray.result.error).toMatchObject({ code: "USAGE" });
   });
 
   it("requires --from to match the connected wallet", async () => {

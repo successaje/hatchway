@@ -65,9 +65,13 @@ Options
   --from <address>    Require this wallet address
   --no-build          Skip \`forge build\` / \`hardhat build\`
   --root <dir>        Project directory
+  --verify            Verify the source after deploying (Foundry projects; Sourcify by default)
+  --verifier <name>   sourcify, etherscan, blockscout, … (passed to forge verify-contract)
+  --verifier-url <u>  Verifier API URL; API keys come from ETHERSCAN_API_KEY or foundry.toml
 
-Example
+Examples
   hatchway deploy HatchToken --rpc-url http://127.0.0.1:8545 --args "Hatch Token" HATCH 1000000
+  hatchway deploy HatchToken --rpc-url bsc_testnet --verify --args "Hatch Token" HATCH 1000000
 
 ${SESSION}`,
 

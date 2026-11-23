@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `hatchway deploy --verify` publishes the contract's source once the deployment is confirmed,
+  through `forge verify-contract` (Sourcify by default; `--verifier` and `--verifier-url` for
+  Etherscan, Blockscout and others, with keys from forge's usual environment variables or
+  `foundry.toml`). A failed verification leaves the deployment in place, exits with the new
+  code 11 (`VERIFICATION_FAILED`) and prints the command to retry.
+- A guide to verifying contracts with `deploy`, `forge … --verify` and Hardhat.
+
 ## [0.1.0] - 2026-11-01
 
 First release, published to npm by hand (no `v0.1.0` tag or GitHub release).

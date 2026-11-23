@@ -80,25 +80,26 @@ the current chain state. `--resume` is passed through to forge unchanged.
 
 ## Compatibility matrix
 
-| Feature                                                    | Status         | Notes                                             |
-| ---------------------------------------------------------- | -------------- | ------------------------------------------------- |
-| `forge script … --broadcast`                               | Supported      | Tested                                            |
-| Constructor arguments                                      | Supported      | Decoded from `out/`; tested                       |
-| Multiple deployments and calls in one script               | Supported      | One approval at a time, nonce order; tested       |
-| Deploy + initialize, ownership transfer                    | Supported      | Tested                                            |
-| ERC-1967 proxy deployment and calls through it             | Supported      | Tested                                            |
-| CREATE2 via `new C{salt: …}()`                             | Supported      | Decoded; predicted address shown                  |
-| Revert during simulation                                   | Supported      | Fails before the wallet is asked; tested          |
-| Rejection, wrong network, account change, Ctrl+C           | Supported      | Tested                                            |
-| Approvals slower than forge's 45 s RPC timeout             | Supported      | ~4 minutes per transaction on forge 1.6; tested   |
-| Dry run (no `--broadcast`)                                 | Supported      |                                                   |
-| `--verify`, `--resume`, `--sig`, `--with-gas-price`, `-v…` | Passed through | Not separately tested                             |
-| `[rpc_endpoints]` aliases with `${ENV}`                    | Supported      |                                                   |
-| `vm.startBroadcast(privateKey)`, signer flags              | Unsupported    | Refused with an explanation                       |
-| Several broadcasting senders in one script                 | Unsupported    | One wallet account per session                    |
-| `--multi`, broadcasting on `createSelectFork` forks        | Unsupported    | Only the primary RPC is routed through the wallet |
-| `--debug`                                                  | Unsupported    |                                                   |
-| zkSync and other non-standard deployment chains            | Unsupported    |                                                   |
+| Feature                                             | Status         | Notes                                             |
+| --------------------------------------------------- | -------------- | ------------------------------------------------- |
+| `forge script … --broadcast`                        | Supported      | Tested                                            |
+| Constructor arguments                               | Supported      | Decoded from `out/`; tested                       |
+| Multiple deployments and calls in one script        | Supported      | One approval at a time, nonce order; tested       |
+| Deploy + initialize, ownership transfer             | Supported      | Tested                                            |
+| ERC-1967 proxy deployment and calls through it      | Supported      | Tested                                            |
+| CREATE2 via `new C{salt: …}()`                      | Supported      | Decoded; predicted address shown                  |
+| Revert during simulation                            | Supported      | Fails before the wallet is asked; tested          |
+| Rejection, wrong network, account change, Ctrl+C    | Supported      | Tested                                            |
+| Approvals slower than forge's 45 s RPC timeout      | Supported      | ~4 minutes per transaction on forge 1.6; tested   |
+| Dry run (no `--broadcast`)                          | Supported      |                                                   |
+| `--verify`, `--verifier`, `--verifier-url`          | Supported      | Passed through; tested with a local verifier      |
+| `--resume`, `--sig`, `--with-gas-price`, `-v…`      | Passed through | Not separately tested                             |
+| `[rpc_endpoints]` aliases with `${ENV}`             | Supported      |                                                   |
+| `vm.startBroadcast(privateKey)`, signer flags       | Unsupported    | Refused with an explanation                       |
+| Several broadcasting senders in one script          | Unsupported    | One wallet account per session                    |
+| `--multi`, broadcasting on `createSelectFork` forks | Unsupported    | Only the primary RPC is routed through the wallet |
+| `--debug`                                           | Unsupported    |                                                   |
+| zkSync and other non-standard deployment chains     | Unsupported    |                                                   |
 
 Verified with forge **1.6.0-nightly (2026-04-27)** locally and **1.8.7** (stable) in CI.
 Background: [Foundry integration research](../research/foundry-integration.md).

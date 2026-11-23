@@ -69,6 +69,12 @@ Hardhat **3.21.2** with `@nomicfoundation/hardhat-ethers` 4.2 and Hardhat Igniti
 `run` scripts with deployments and calls, `signMessage`, Ignition deployments, rejection,
 reverts, and installation from the npm tarball into a clean project.
 
+## Verifying contracts
+
+Use the `hardhat-verify` plugin, for example `hatchway hardhat ignition deploy <module>
+--network <name> --verify`; see [verifying contracts](verification.md). Not yet tested with
+Hatchway.
+
 ## Limitations
 
 - **Hardhat 2** is not supported by `hatchway hardhat`. Use `hatchway connect` and point a

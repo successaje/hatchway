@@ -222,6 +222,9 @@ And for a single compiled contract:
 hatchway deploy HatchToken --rpc-url http://127.0.0.1:8545 --args "Hatch Token" HATCH 1000000
 ```
 
+Add `--verify` to publish the source once it is deployed (Sourcify by default, no key needed).
+See [verifying contracts](docs/guides/verification.md).
+
 ## How it works
 
 ```text
@@ -265,7 +268,7 @@ fixed, see the threat model), but **not** a professional security audit.
 
 | Area     | Verified                                                                                                                                                                                 |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundry  | forge 1.6.0-nightly (local) and 1.8.7 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify` passthrough                                                                 |
+| Foundry  | forge 1.6.0-nightly (local) and 1.8.7 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify`                                                                             |
 | Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                |
 | Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask: forge deployments (1 and 5 tx) on BNB testnet, full checklist pending; Rabby: pending                 |
 | Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`). Real deployment: BNB Smart Chain Testnet                                            |
@@ -294,7 +297,8 @@ most of these automatically.
 - Guides: [installation](docs/guides/installation.md) ·
   [first deployment](docs/guides/first-deployment.md) · [Foundry](docs/guides/foundry.md) ·
   [Hardhat](docs/guides/hardhat.md) · [wallets](docs/guides/wallets.md) ·
-  [networks](docs/guides/networks.md) · [remote development](docs/guides/remote-development.md) ·
+  [networks](docs/guides/networks.md) · [verifying contracts](docs/guides/verification.md) ·
+  [remote development](docs/guides/remote-development.md) ·
   [automation and AI agents](docs/guides/automation.md) · [security](docs/guides/security.md) ·
   [troubleshooting](docs/guides/troubleshooting.md) ·
   [manual wallet acceptance test](docs/guides/manual-acceptance.md)
