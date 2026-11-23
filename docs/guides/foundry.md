@@ -78,6 +78,11 @@ it there. Newer forge builds honour the `ETH_RPC_TIMEOUT` value Hatchway sets.
 If a run stops part-way (rejection, timeout), rerun the same command; forge re-simulates from
 the current chain state. `--resume` is passed through to forge unchanged.
 
+forge 1.10 and later refuse to rerun a script whose previous broadcast was left unfinished, with
+"the previous broadcast … has unfinished operations". Add `--start-fresh` to the command to
+archive that record and start again, or `--resume` to send what is left. Both pass through
+Hatchway to forge.
+
 ## Compatibility matrix
 
 | Feature                                             | Status         | Notes                                             |
