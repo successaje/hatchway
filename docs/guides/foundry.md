@@ -106,7 +106,7 @@ Hatchway to forge.
 | `--debug`                                           | Unsupported    |                                                   |
 | zkSync and other non-standard deployment chains     | Unsupported    |                                                   |
 
-Verified with forge **1.6.0-nightly (2026-04-27)** locally and **1.8.7** (stable) in CI.
+Verified with forge **1.6.0-nightly (2026-04-27)** locally, and **1.8.7** and **1.10.0** (stable) in CI.
 Background: [Foundry integration research](../research/foundry-integration.md).
 
 ## Foundry's own `--browser`
