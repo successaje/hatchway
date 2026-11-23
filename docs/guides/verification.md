@@ -89,3 +89,8 @@ Hatchway passes these through unchanged, but has not tested them yet.
   Etherscan-compatible verifier in the integration tests, with the real forge: they check what
   forge submits (address, contract name, compiler version, constructor arguments, standard JSON
   input), a failed verification (exit code 11, retry command), and the refusals.
+- On BNB Smart Chain Testnet with MetaMask (2026-11-23), `hatchway deploy --verify` deployed
+  `HatchToken` and Sourcify verified it with an exact match:
+  [0xB051…323b](https://repo.sourcify.dev/97/0xB051c0b5385848F4c7FC5FB03609935BA0e7323b).
+- Not tested yet: Etherscan-family explorers (they need an API key), and Hardhat's
+  `hardhat-verify` through Hatchway.

@@ -266,13 +266,13 @@ fixed, see the threat model), but **not** a professional security audit.
 
 ## Compatibility
 
-| Area     | Verified                                                                                                                                                                                 |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Foundry  | forge 1.6.0-nightly (local), 1.8.7 and 1.10.0 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify`                                                                     |
-| Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                |
-| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask: forge deployments (1 and 5 tx) on BNB testnet, full checklist pending; Rabby: pending                 |
-| Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`). Real deployment: BNB Smart Chain Testnet                                            |
-| OS       | Full suite (unit, integration, E2E): macOS arm64 locally, Linux x64 and macOS arm64 in CI. Unit and security tests also on Linux arm64, macOS x64 and Windows x64 in CI (Node 22 and 24) |
+| Area     | Verified                                                                                                                                                                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundry  | forge 1.6.0-nightly (local), 1.8.7 and 1.10.0 stable (CI) — scripts, multi-tx, proxies, CREATE2 decoding, `--verify`                                                                           |
+| Hardhat  | Hardhat 3.21 — `run` with ethers, `signMessage`, Ignition                                                                                                                                      |
+| Wallets  | EIP-1193 + EIP-6963 wallets. Automated tests use a deterministic wallet; MetaMask: forge deployments (1 and 5 tx) and `deploy --verify` on BNB testnet, full checklist pending; Rabby: pending |
+| Networks | Any EVM chain with standard CREATE semantics; names/explorers for common chains (`hatchway chains`). Real deployment: BNB Smart Chain Testnet                                                  |
+| OS       | Full suite (unit, integration, E2E): macOS arm64 locally, Linux x64 and macOS arm64 in CI. Unit and security tests also on Linux arm64, macOS x64 and Windows x64 in CI (Node 22 and 24)       |
 
 Not supported: Hardhat 2 via `hatchway hardhat` (use `connect`), Hardhat's in-process network,
 `forge script --multi`, raw signed transactions (`eth_signTransaction`), EIP-7702 and blob
