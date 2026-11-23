@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { rmSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,10 +15,16 @@ export const HARDHAT_EXAMPLE = fileURLToPath(
 /**
  * Removes forge's broadcast records from the Foundry example. forge 1.10 and later refuse to
  * broadcast a script whose previous run has unfinished operations, and several tests leave one
- * on purpose (rejection, Ctrl+C, nonce conflicts), so each test starts without them.
+ * on purpose (rejection, Ctrl+C, nonce conflicts), so each test starts without them. A record
+ * has a public half in `broadcast/` and a private half, with forge's recovery snapshot, in
+ * `cache/<Script>.s.sol/`; the compiler cache next to it is kept.
  */
 export function clearBroadcasts(): void {
   rmSync(join(FOUNDRY_EXAMPLE, "broadcast"), { recursive: true, force: true });
+  const cache = join(FOUNDRY_EXAMPLE, "cache");
+  for (const entry of existsSync(cache) ? readdirSync(cache) : []) {
+    if (entry.endsWith(".s.sol")) rmSync(join(cache, entry), { recursive: true, force: true });
+  }
 }
 
 export type CliEvent = { event: string } & Record<string, unknown>;
