@@ -1,13 +1,13 @@
 # Project status
 
-_Last updated: 2026-11-01._
+_Last updated: 2026-11-23._
 
 ## Summary
 
 Hatchway 0.1.0 is functionally complete for local and testnet use with Foundry and Hardhat 3,
 verified end to end on Anvil with a deterministic test wallet, and across platforms in CI. A real
-MetaMask install ran two `hatchway forge` deployments (1 and 5 transactions) on BNB Smart Chain
-Testnet. It is
+MetaMask install ran two `hatchway forge` deployments (1 and 5 transactions) and one
+`hatchway deploy --verify` (verified on Sourcify) on BNB Smart Chain Testnet. It is
 **published on npm** as `hatchway` 0.1.0. The full MetaMask acceptance checklist has not been
 run, and **Rabby is untested**.
 
@@ -43,9 +43,9 @@ run, and **Rabby is untested**.
 | Lint, Prettier, TypeScript strict, build                                                               | Pass   | Local and CI                                                                      |
 | Production dependency audit                                                                            | Pass   | CI (one documented ignore: GHSA-mrhx-c7xc-m3w5)                                   |
 
-### Real wallet on a public testnet (2026-11-01)
+### Real wallet on a public testnet
 
-Both runs: `hatchway forge <script> --rpc-url https://bsc-testnet-rpc.publicnode.com --broadcast`
+The two forge runs (2026-11-01): `hatchway forge <script> --rpc-url https://bsc-testnet-rpc.publicnode.com --broadcast`
 from `examples/foundry`, forge 1.6.0-nightly, MetaMask, macOS arm64. In both, the wallet
 connected on Ethereum mainnet (chain 1) and the page switched it to BNB Smart Chain Testnet (97).
 Every result below was checked independently with `cast` against a second RPC
@@ -75,8 +75,23 @@ Every result below was checked independently with `cast` against a second RPC
   The registry reports `initialized()` true, `token()` and `entries("token")` equal to the
   token, and `owner()` `0x…bEEF`. The deployer holds 1e24 HATCH and its nonce is now 141.
 
+**`hatchway deploy --verify`, one transaction, verified on Sourcify (2026-11-23)**
+
+- `hatchway deploy HatchToken --rpc-url bsc_testnet --verify --args "Hatch Token" HATCH 1000000`
+  from `examples/foundry` on `main` at `1ae4521`, forge 1.6.0-nightly, MetaMask, macOS arm64. The
+  wallet connected on BNB Smart Chain (56) and the page switched it to the testnet (97).
+- One deployment approved in MetaMask: tx
+  `0x07f80d67754476a148078952472f046711d6aaf9487a277d22cb2094678d4265`, block 144483682,
+  HatchToken at `0xB051c0b5385848F4c7FC5FB03609935BA0e7323b`, fee 0.000475 tBNB.
+- Hatchway then ran `forge verify-contract` against Sourcify (the default, no key), which
+  reported `exact_match`; the run record has `verification: { ok: true }`.
+- Checked independently: the receipt on `data-seed-prebsc-1-s1` has status 1 and comes from the
+  connected account; `name()` "Hatch Token", `symbol()` "HATCH", `totalSupply()` 1e6; Sourcify's
+  API reports an exact match for both creation and runtime bytecode
+  ([repo.sourcify.dev](https://repo.sourcify.dev/97/0xB051c0b5385848F4c7FC5FB03609935BA0e7323b)).
+
 Not covered by these runs: rejection, reload and account switching with a real extension,
-Hardhat on a public network, and Rabby.
+Hardhat on a public network, verification on Etherscan-family explorers, and Rabby.
 
 ## Release
 
